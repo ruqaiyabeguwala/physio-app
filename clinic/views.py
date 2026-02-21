@@ -1,5 +1,5 @@
 import csv
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
 from datetime import date, timedelta
 import re
@@ -8,6 +8,7 @@ from django.db.models import DecimalField, F, Sum, Q
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django import forms
 
@@ -66,6 +67,18 @@ def dashboard(request):
         .order_by("visit_date", "id")[:10]
     )
 
+    today = timezone.localdate()
+    visits_for_table = (
+        visits_qs.select_related("patient")
+        .order_by("visit_date", "id")
+    )
+
+    appointments_for_table = (
+        Appointment.objects.select_related("patient")
+        .filter(scheduled_date__range=(start_date, end_date))
+        .order_by("scheduled_date", "scheduled_time", "id")
+    )
+
     revenue_by_date = (
         visits_qs.values("visit_date")
         .annotate(
@@ -94,6 +107,9 @@ def dashboard(request):
         "pending_list": pending_list,
         "revenue_by_date": revenue_by_date,
         "recent_visits": recent_visits,
+        "visits_for_table": visits_for_table,
+        "appointments_for_table": appointments_for_table,
+        "today": today,
     }
     return render(request, "dashboard.html", context)
 
@@ -311,14 +327,59 @@ def visit_create(request):
     today = timezone.localdate()
 
     previous_unpaid = None
+    previous_unpaid_total = Decimal("0.00")
     if patient:
         previous_unpaid = (
             patient.visits.filter(is_deleted=False)
             .exclude(payment_status=Visit.STATUS_PAID)
             .order_by("visit_date", "id")
         )
+        for v in previous_unpaid:
+            previous_unpaid_total += (v.visit_fee or Decimal("0.00")) - (v.amount_paid or Decimal("0.00"))
 
-    if request.method == "POST":
+    if request.method == "POST" and request.POST.get("clear_dues") == "1":
+        if not patient:
+            patient = get_object_or_404(Patient, pk=request.POST.get("patient_id"))
+
+        try:
+            clear_amount = Decimal(request.POST.get("clear_amount") or "0")
+        except (TypeError, InvalidOperation):
+            clear_amount = Decimal("0.00")
+
+        if clear_amount > 0:
+            remaining = clear_amount
+            outstanding_qs = (
+                patient.visits.filter(is_deleted=False)
+                .exclude(payment_status=Visit.STATUS_PAID)
+                .order_by("visit_date", "id")
+            )
+            for old_visit in outstanding_qs:
+                fee = old_visit.visit_fee or Decimal("0.00")
+                paid = old_visit.amount_paid or Decimal("0.00")
+                balance = fee - paid
+                if balance <= 0 or remaining <= 0:
+                    continue
+                to_apply = min(balance, remaining)
+                old_visit.amount_paid = paid + to_apply
+                _set_payment_status(old_visit)
+                if not old_visit.payment_date:
+                    old_visit.payment_date = timezone.localdate()
+                old_visit.save(update_fields=["amount_paid", "payment_status", "payment_date"])
+                remaining -= to_apply
+
+            _update_patient_summary(patient)
+
+        previous_unpaid = (
+            patient.visits.filter(is_deleted=False)
+            .exclude(payment_status=Visit.STATUS_PAID)
+            .order_by("visit_date", "id")
+        )
+        previous_unpaid_total = Decimal("0.00")
+        for v in previous_unpaid:
+            previous_unpaid_total += (v.visit_fee or Decimal("0.00")) - (v.amount_paid or Decimal("0.00"))
+
+        form = VisitForm(initial={"visit_date": today, "payment_date": today})
+    elif request.method == "POST":
         form = VisitForm(request.POST)
         if form.is_valid():
             visit = form.save(commit=False)
@@ -346,6 +407,7 @@ def visit_create(request):
         "patient": patient,
         "appointment": appointment,
         "previous_unpaid": previous_unpaid,
+        "previous_unpaid_total": previous_unpaid_total,
         "today": today,
     }
     return render(request, "visits/form.html", context)
@@ -390,6 +452,28 @@ def visit_detail(request, pk):
     return render(request, "visits/detail.html", context)
 
 
+def visit_clear_due(request, pk):
+    visit = get_object_or_404(Visit.objects.select_related("patient"), pk=pk, is_deleted=False)
+    if request.method == "POST":
+        fee = visit.visit_fee or Decimal("0.00")
+        paid = visit.amount_paid or Decimal("0.00")
+        balance = fee - paid
+        try:
+            clear_amount = Decimal(request.POST.get("clear_amount") or "0")
+        except (TypeError, InvalidOperation):
+            clear_amount = Decimal("0.00")
+
+        if balance > 0 and clear_amount > 0:
+            to_apply = min(balance, clear_amount)
+            visit.amount_paid = paid + to_apply
+            _set_payment_status(visit)
+            if not visit.payment_date:
+                visit.payment_date = timezone.localdate()
+            visit.save(update_fields=["amount_paid", "payment_status", "payment_date"])
+            _update_patient_summary(visit.patient)
+    return redirect("patient_detail", pk=visit.patient.pk)
+
+
 def visit_edit(request, pk):
     visit = get_object_or_404(Visit, pk=pk, is_deleted=False)
     patient = visit.patient
@@ -422,16 +506,85 @@ def visit_edit(request, pk):
     return render(request, "visits/form.html", context)
 
 
+class AppointmentForm(forms.ModelForm):
+    class Meta:
+        model = Appointment
+        fields = [
+            "patient",
+            "scheduled_date",
+            "scheduled_time",
+            "reason",
+            "notes",
+        ]
+        widgets = {
+            "patient": forms.Select(attrs={"class": "form-select"}),
+            "scheduled_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "scheduled_time": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+            "reason": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
+            "notes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+        }
+
+
 def appointments_list(request):
-    return HttpResponse("Appointments list")
+    today = timezone.localdate()
+    base_qs = Appointment.objects.select_related("patient").order_by("scheduled_date", "scheduled_time", "id")
+    today_appointments = base_qs.filter(scheduled_date=today)
+    upcoming_appointments = base_qs.filter(scheduled_date__gt=today)
+    past_appointments = base_qs.filter(scheduled_date__lt=today)
+    context = {
+        "today": today,
+        "today_appointments": today_appointments,
+        "upcoming_appointments": upcoming_appointments,
+        "past_appointments": past_appointments,
+    }
+    return render(request, "appointments/list.html", context)
 
 
 def appointment_create(request):
-    return HttpResponse("New appointment form")
+    initial = {
+        "scheduled_date": timezone.localdate(),
+    }
+    if request.method == "POST":
+        form = AppointmentForm(request.POST)
+        if form.is_valid():
+            appointment = form.save(commit=False)
+            appointment.status = Appointment.STATUS_SCHEDULED
+            appointment.save()
+            return redirect("appointments_list")
+    else:
+        form = AppointmentForm(initial=initial)
+    context = {
+        "form": form,
+    }
+    return render(request, "appointments/form.html", context)
 
 
 def appointment_complete(request, pk):
-    return HttpResponse(f"Complete appointment {pk}")
+    appointment = get_object_or_404(Appointment.objects.select_related("patient"), pk=pk)
+    if appointment.status == Appointment.STATUS_COMPLETED:
+        return redirect("appointments_list")
+    return redirect(f"{reverse('visit_create')}?appointment={appointment.pk}")
+
+
+def appointment_edit(request, pk):
+    appointment = get_object_or_404(Appointment, pk=pk)
+    if request.method == "POST":
+        form = AppointmentForm(request.POST, instance=appointment)
+        if form.is_valid():
+            form.save()
+            return redirect("appointments_list")
+    else:
+        form = AppointmentForm(instance=appointment)
+    context = {"form": form}
+    return render(request, "appointments/form.html", context)
+
+
+def appointment_delete(request, pk):
+    appointment = get_object_or_404(Appointment, pk=pk)
+    if request.method == "POST":
+        appointment.delete()
+        return redirect("appointments_list")
+    return HttpResponseRedirect(reverse("appointments_list"))
 
 
 def exercises_list(request):

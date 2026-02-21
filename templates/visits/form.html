@@ -35,37 +35,6 @@
     </div>
 </div>
 
-{% if previous_unpaid and previous_unpaid.exists %}
-    <div class="alert alert-warning hp-section hp-fade-up-delayed">
-        <div class="d-flex justify-content-between align-items-start">
-            <div>
-                <div class="fw-semibold mb-1">Outstanding dues</div>
-                <div class="small">
-                    This patient has previous visits with pending or partial payments.
-                </div>
-            </div>
-        </div>
-        <div class="table-responsive mt-2">
-            <table class="table table-sm align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th class="text-end">Balance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for v in previous_unpaid|slice:":5" %}
-                        <tr>
-                            <td>{{ v.visit_date }}</td>
-                            <td class="text-end">₹{{ v.balance }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-{% endif %}
-
 <div class="card hp-card hp-section hp-fade-up-late">
     <div class="card-body">
         <form method="post" novalidate>
@@ -80,51 +49,113 @@
                 </div>
             {% endif %}
 
+            {% if previous_unpaid and previous_unpaid.exists %}
+                <div class="alert alert-warning mb-4">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <div class="fw-semibold mb-1">Outstanding dues</div>
+                            <div class="small mb-2">
+                                This patient has previous visits with pending or partial payments.
+                            </div>
+                            <div class="small text-muted">
+                                Total pending: ₹{{ previous_unpaid_total }}
+                            </div>
+                        </div>
+                        {% if previous_unpaid_total and previous_unpaid_total > 0 %}
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#clearPatientDuesModal"
+                            >
+                                Clear due
+                            </button>
+                        {% endif %}
+                    </div>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th class="text-end">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for v in previous_unpaid|slice:":5" %}
+                                    <tr>
+                                        <td>{{ v.visit_date }}</td>
+                                        <td class="text-end">₹{{ v.balance }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Visit date</label>
                     {{ form.visit_date }}
-                    {{ form.visit_date.errors }}
+                    {% if form.visit_date.errors %}
+                        <div class="text-danger small">{{ form.visit_date.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Visit fee</label>
                     {{ form.visit_fee }}
-                    {{ form.visit_fee.errors }}
+                    {% if form.visit_fee.errors %}
+                        <div class="text-danger small">{{ form.visit_fee.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Amount paid</label>
                     {{ form.amount_paid }}
-                    {{ form.amount_paid.errors }}
+                    {% if form.amount_paid.errors %}
+                        <div class="text-danger small">{{ form.amount_paid.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Payment method</label>
                     {{ form.payment_method }}
-                    {{ form.payment_method.errors }}
+                    {% if form.payment_method.errors %}
+                        <div class="text-danger small">{{ form.payment_method.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Payment date</label>
                     {{ form.payment_date }}
-                    {{ form.payment_date.errors }}
+                    {% if form.payment_date.errors %}
+                        <div class="text-danger small">{{ form.payment_date.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-12">
                     <label class="form-label">Symptoms / complaints</label>
                     {{ form.symptoms }}
-                    {{ form.symptoms.errors }}
+                    {% if form.symptoms.errors %}
+                        <div class="text-danger small">{{ form.symptoms.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-12">
                     <label class="form-label">Treatment / therapy</label>
                     {{ form.treatment }}
-                    {{ form.treatment.errors }}
+                    {% if form.treatment.errors %}
+                        <div class="text-danger small">{{ form.treatment.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Next appointment date</label>
                     {{ form.next_appointment_date }}
-                    {{ form.next_appointment_date.errors }}
+                    {% if form.next_appointment_date.errors %}
+                        <div class="text-danger small">{{ form.next_appointment_date.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-12">
                     <label class="form-label">Notes</label>
                     {{ form.notes }}
-                    {{ form.notes.errors }}
+                    {% if form.notes.errors %}
+                        <div class="text-danger small">{{ form.notes.errors }}</div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -145,4 +176,49 @@
         </form>
     </div>
 </div>
+
+{% if previous_unpaid and previous_unpaid.exists and previous_unpaid_total and previous_unpaid_total > 0 %}
+<div class="modal fade" id="clearPatientDuesModal" tabindex="-1" aria-labelledby="clearPatientDuesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                {% if patient %}
+                    <input type="hidden" name="patient_id" value="{{ patient.pk }}">
+                {% endif %}
+                <input type="hidden" name="clear_dues" value="1">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clearPatientDuesLabel">Clear outstanding dues</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">
+                        Total pending for this patient is <strong>₹{{ previous_unpaid_total }}</strong>.
+                    </p>
+                    <p class="small text-muted mb-3">
+                        Enter the amount you want to clear now. You can clear partially or fully.
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input
+                            type="number"
+                            name="clear_amount"
+                            class="form-control text-end"
+                            step="0.01"
+                            min="0"
+                            value="{{ previous_unpaid_total }}"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Clear due</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}

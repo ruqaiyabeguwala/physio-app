@@ -41,27 +41,37 @@
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
                     {{ form.email }}
-                    {{ form.email.errors }}
+                    {% if form.email.errors %}
+                        <div class="text-danger small">{{ form.email.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Age</label>
                     {{ form.age }}
-                    {{ form.age.errors }}
+                    {% if form.age.errors %}
+                        <div class="text-danger small">{{ form.age.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Gender</label>
                     {{ form.gender }}
-                    {{ form.gender.errors }}
+                    {% if form.gender.errors %}
+                        <div class="text-danger small">{{ form.gender.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-12">
                     <label class="form-label">Address</label>
                     {{ form.address }}
-                    {{ form.address.errors }}
+                    {% if form.address.errors %}
+                        <div class="text-danger small">{{ form.address.errors }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-12">
                     <label class="form-label">Notes</label>
                     {{ form.notes }}
-                    {{ form.notes.errors }}
+                    {% if form.notes.errors %}
+                        <div class="text-danger small">{{ form.notes.errors }}</div>
+                    {% endif %}
                 </div>
             </div>
 

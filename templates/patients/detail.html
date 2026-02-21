@@ -124,6 +124,18 @@
                                     <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
+                                    {% if visit.payment_status != 'paid' and visit.balance %}
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-link text-danger p-0 ms-2"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#visitClearDueModal"
+                                            data-url="{% url 'visit_clear_due' visit.pk %}"
+                                            data-amount="{{ visit.balance }}"
+                                        >
+                                            Clear due
+                                        </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                         {% endfor %}
@@ -137,6 +149,63 @@
                 </tbody>
             </table>
         </div>
+        </div>
+    </div>
+
+<div class="modal fade" id="visitClearDueModal" tabindex="-1" aria-labelledby="visitClearDueLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" id="visitClearDueForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="visitClearDueLabel">Clear visit due</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">
+                        Enter the amount to clear for this visit.
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input
+                            type="number"
+                            name="clear_amount"
+                            id="visitClearDueAmount"
+                            class="form-control text-end"
+                            step="0.01"
+                            min="0"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Clear due</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('visitClearDueModal');
+    if (!modalEl) return;
+    modalEl.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        if (!button) return;
+        var url = button.getAttribute('data-url');
+        var amount = button.getAttribute('data-amount');
+        var form = document.getElementById('visitClearDueForm');
+        var amountInput = document.getElementById('visitClearDueAmount');
+        if (form && url) {
+            form.action = url;
+        }
+        if (amountInput) {
+            amountInput.value = amount || '';
+        }
+    });
+});
+</script>
+
 {% endblock %}

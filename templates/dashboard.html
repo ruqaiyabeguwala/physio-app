@@ -29,6 +29,7 @@
         </div>
     </div>
     </div>
+    </div>
 </div>
 
 <div class="row g-3 hp-section hp-fade-up-delayed">
@@ -67,6 +68,158 @@
             </div>
         </div>
     </div>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-late">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="hp-section-heading">
+                {% if range_key == 'today' %}Today's visits{% else %}Visits (selected period){% endif %}
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th>Status</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if visits_for_table %}
+                        {% for visit in visits_for_table %}
+                            <tr>
+                                <td>{{ visit.visit_date }}</td>
+                                <td>{{ visit.patient.full_name }}</td>
+                                <td>
+                                    {% if visit.payment_status == 'paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif visit.payment_status == 'partial' %}
+                                        <span class="badge bg-warning text-dark">Partial</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">₹{{ visit.visit_fee }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        Open visit
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted small">
+                                {% if range_key == 'today' %}
+                                    No visits for today.
+                                {% else %}
+                                    No visits in the selected period.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-late">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="hp-section-heading">
+                {% if range_key == 'today' %}Today's appointments{% else %}Appointments (selected period){% endif %}
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Patient</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if appointments_for_table %}
+                        {% for appt in appointments_for_table %}
+                            <tr>
+                                <td>
+                                    {% if appt.scheduled_time %}
+                                        {{ appt.scheduled_time }}
+                                    {% else %}
+                                        <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ appt.patient.full_name }}</td>
+                                <td>
+                                    {% if appt.reason %}
+                                        {{ appt.reason|truncatechars:40 }}
+                                    {% else %}
+                                        <span class="text-muted small">No reason</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if appt.status == 'scheduled' %}
+                                        <span class="badge bg-primary">Scheduled</span>
+                                    {% elif appt.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif appt.status == 'cancelled' %}
+                                        <span class="badge bg-secondary">Cancelled</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">No-show</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if appt.status == 'scheduled' %}
+                                        <a href="{% url 'appointment_complete' appt.pk %}" class="btn btn-sm btn-primary me-1">
+                                            Complete
+                                        </a>
+                                        <span class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                More
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li>
+                                                    <a class="dropdown-item" href="{% url 'appointment_edit' appt.pk %}">
+                                                        Edit
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <form method="post" action="{% url 'appointment_delete' appt.pk %}">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            Delete
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted small">
+                                {% if range_key == 'today' %}
+                                    No appointments for today.
+                                {% else %}
+                                    No appointments in the selected period.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -120,71 +273,6 @@
             </div>
         </div>
     </div>
-    </div>
-</div>
-
-<div class="card hp-card hp-section hp-fade-up-late">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="d-flex align-items-center gap-2">
-                <a href="?range=today" class="btn btn-sm {% if range_key == 'today' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-                    Today
-                </a>
-                <a href="?range=month" class="btn btn-sm {% if range_key == 'month' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-                    This month
-                </a>
-                <a href="?range=year" class="btn btn-sm {% if range_key == 'year' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-                    This year
-                </a>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <input type="search" class="form-control form-control-sm" placeholder="Search patient (not wired yet)">
-            </div>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm align-middle">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Patient</th>
-                        <th>Status</th>
-                        <th class="text-end">Amount</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if recent_visits %}
-                        {% for visit in recent_visits %}
-                            <tr>
-                                <td>{{ visit.visit_date }}</td>
-                                <td>{{ visit.patient.full_name }}</td>
-                                <td>
-                                    {% if visit.payment_status == 'paid' %}
-                                        <span class="badge bg-success">Paid</span>
-                                    {% elif visit.payment_status == 'partial' %}
-                                        <span class="badge bg-warning text-dark">Partial</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Pending</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">₹{{ visit.visit_fee }}</td>
-                                <td class="text-end">
-                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary">
-                                        Open visit
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="5" class="text-center text-muted small">
-                                No visits in the selected period.
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
     </div>
 </div>
 {% endblock %}

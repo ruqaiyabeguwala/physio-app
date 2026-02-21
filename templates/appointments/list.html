@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div>
+        <h1 class="hp-page-title mb-1">Appointments</h1>
+        <div class="hp-page-subtitle">
+            Manage today, upcoming, and past appointments.
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a href="{% url 'appointment_create' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg"></i>
+            <span class="ms-1 d-none d-sm-inline">New appointment</span>
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 hp-section hp-fade-up-delayed">
+    <div class="col-12">
+        <div class="hp-card">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Today</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Patient</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if today_appointments %}
+                                {% for appt in today_appointments %}
+                                    <tr>
+                                        <td>
+                                            {% if appt.scheduled_time %}
+                                                {{ appt.scheduled_time }}
+                                            {% else %}
+                                                <span class="text-muted small">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ appt.patient.full_name }}</td>
+                                        <td>
+                                            {% if appt.reason %}
+                                                {{ appt.reason|truncatechars:40 }}
+                                            {% else %}
+                                                <span class="text-muted small">No reason provided</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if appt.status == 'scheduled' %}
+                                                <span class="badge bg-primary">Scheduled</span>
+                                            {% elif appt.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif appt.status == 'cancelled' %}
+                                                <span class="badge bg-secondary">Cancelled</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">No-show</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if appt.status == 'scheduled' %}
+                                                <a href="{% url 'appointment_complete' appt.pk %}" class="btn btn-sm btn-primary me-1">
+                                                    Complete
+                                                </a>
+                                                <span class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                        More
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li>
+                                                            <a class="dropdown-item" href="{% url 'appointment_edit' appt.pk %}">
+                                                                Edit
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <form method="post" action="{% url 'appointment_delete' appt.pk %}">
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="dropdown-item text-danger">
+                                                                    Delete
+                                                                </button>
+                                                            </form>
+                                                        </li>
+                                                    </ul>
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted small">
+                                        No appointments for today.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 hp-section hp-fade-up-late">
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Upcoming (after {{ today }})</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Patient</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if upcoming_appointments %}
+                                {% for appt in upcoming_appointments %}
+                                    <tr>
+                                        <td>{{ appt.scheduled_date }}</td>
+                                        <td>
+                                            {% if appt.scheduled_time %}
+                                                {{ appt.scheduled_time }}
+                                            {% else %}
+                                                <span class="text-muted small">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ appt.patient.full_name }}</td>
+                                        <td>
+                                            {% if appt.status == 'scheduled' %}
+                                                <span class="badge bg-primary">Scheduled</span>
+                                            {% elif appt.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif appt.status == 'cancelled' %}
+                                                <span class="badge bg-secondary">Cancelled</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">No-show</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted small">
+                                        No upcoming appointments.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Past (before {{ today }})</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Patient</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if past_appointments %}
+                                {% for appt in past_appointments %}
+                                    <tr>
+                                        <td>{{ appt.scheduled_date }}</td>
+                                        <td>
+                                            {% if appt.scheduled_time %}
+                                                {{ appt.scheduled_time }}
+                                            {% else %}
+                                                <span class="text-muted small">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ appt.patient.full_name }}</td>
+                                        <td>
+                                            {% if appt.status == 'scheduled' %}
+                                                <span class="badge bg-primary">Scheduled</span>
+                                            {% elif appt.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif appt.status == 'cancelled' %}
+                                                <span class="badge bg-secondary">Cancelled</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">No-show</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted small">
+                                        No past appointments.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
