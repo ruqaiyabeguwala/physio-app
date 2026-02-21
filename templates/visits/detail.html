@@ -27,104 +27,161 @@
     </div>
 </div>
 
-<div class="row g-3 hp-section hp-fade-up-delayed">
-    <div class="col-md-6">
-        <div class="hp-card h-100">
-            <div class="card-body">
-                <div class="hp-section-heading mb-2">Visit info</div>
-                <div class="mb-1"><strong>Date:</strong> {{ visit.visit_date }}</div>
-                <div class="mb-1"><strong>Patient:</strong> {{ visit.patient.full_name }}</div>
-                {% if visit.appointment %}
-                    <div class="mb-1"><strong>From appointment:</strong> {{ visit.appointment.scheduled_date }}</div>
-                {% endif %}
-                {% if visit.next_appointment_date %}
-                    <div class="mb-1"><strong>Next appointment:</strong> {{ visit.next_appointment_date }}</div>
-                {% endif %}
-                {% if visit.notes %}
-                    <div class="mb-0"><strong>Notes:</strong> {{ visit.notes }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="hp-card h-100">
-            <div class="card-body">
-                <div class="hp-section-heading mb-2">Payment</div>
-                <div class="mb-1">
-                    <strong>Fee:</strong> ₹{{ visit.visit_fee }}
-                </div>
-                <div class="mb-1">
-                    <strong>Paid:</strong> ₹{{ visit.amount_paid }}
-                </div>
-                <div class="mb-1">
-                    <strong>Status:</strong>
-                    {% if visit.payment_status == 'paid' %}
-                        <span class="badge bg-success">Paid</span>
-                    {% elif visit.payment_status == 'partial' %}
-                        <span class="badge bg-warning text-dark">Partial</span>
-                    {% else %}
-                        <span class="badge bg-danger">Pending</span>
+<ul class="nav nav-tabs hp-section hp-fade-up-delayed mb-3">
+    <li class="nav-item">
+        <button class="nav-link active" id="visit-tab-overview" type="button">Overview</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="visit-tab-exercises" type="button">Exercises</button>
+    </li>
+</ul>
+
+<div id="visit-overview-section">
+    <div class="row g-3 hp-section hp-fade-up-delayed">
+        <div class="col-md-6">
+            <div class="hp-card h-100">
+                <div class="card-body">
+                    <div class="hp-section-heading mb-2">Visit info</div>
+                    <div class="mb-1"><strong>Date:</strong> {{ visit.visit_date }}</div>
+                    <div class="mb-1"><strong>Patient:</strong> {{ visit.patient.full_name }}</div>
+                    {% if visit.appointment %}
+                        <div class="mb-1"><strong>From appointment:</strong> {{ visit.appointment.scheduled_date }}</div>
+                    {% endif %}
+                    {% if visit.next_appointment_date %}
+                        <div class="mb-1"><strong>Next appointment:</strong> {{ visit.next_appointment_date }}</div>
+                    {% endif %}
+                    {% if visit.notes %}
+                        <div class="mb-0"><strong>Notes:</strong> {{ visit.notes }}</div>
                     {% endif %}
                 </div>
-                {% if visit.payment_method %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="hp-card h-100">
+                <div class="card-body">
+                    <div class="hp-section-heading mb-2">Payment</div>
                     <div class="mb-1">
-                        <strong>Method:</strong> {{ visit.get_payment_method_display }}
+                        <strong>Fee:</strong> ₹{{ visit.visit_fee }}
                     </div>
-                {% endif %}
-                {% if visit.payment_date %}
                     <div class="mb-1">
-                        <strong>Payment date:</strong> {{ visit.payment_date }}
+                        <strong>Paid:</strong> ₹{{ visit.amount_paid }}
                     </div>
-                {% endif %}
+                    <div class="mb-1">
+                        <strong>Status:</strong>
+                        {% if visit.payment_status == 'paid' %}
+                            <span class="badge bg-success">Paid</span>
+                        {% elif visit.payment_status == 'partial' %}
+                            <span class="badge bg-warning text-dark">Partial</span>
+                        {% else %}
+                            <span class="badge bg-danger">Pending</span>
+                        {% endif %}
+                    </div>
+                    {% if visit.payment_method %}
+                        <div class="mb-1">
+                            <strong>Method:</strong> {{ visit.get_payment_method_display }}
+                        </div>
+                    {% endif %}
+                    {% if visit.payment_date %}
+                        <div class="mb-1">
+                            <strong>Payment date:</strong> {{ visit.payment_date }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 hp-section hp-fade-up-late">
+        <div class="col-md-6">
+            <div class="hp-card h-100">
+                <div class="card-body">
+                    <div class="hp-section-heading mb-2">Symptoms / complaints</div>
+                    {% if visit.symptoms %}
+                        <div>{{ visit.symptoms|linebreaksbr }}</div>
+                    {% else %}
+                        <div class="text-muted small">No symptoms recorded.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="hp-card h-100">
+                <div class="card-body">
+                    <div class="hp-section-heading mb-2">Treatment / therapy</div>
+                    {% if visit.treatment %}
+                        <div>{{ visit.treatment|linebreaksbr }}</div>
+                    {% else %}
+                        <div class="text-muted small">No treatment notes recorded.</div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-3 hp-section hp-fade-up-late">
-    <div class="col-md-6">
-        <div class="hp-card h-100">
-            <div class="card-body">
-                <div class="hp-section-heading mb-2">Symptoms / complaints</div>
-                {% if visit.symptoms %}
-                    <div>{{ visit.symptoms|linebreaksbr }}</div>
-                {% else %}
-                    <div class="text-muted small">No symptoms recorded.</div>
-                {% endif %}
+<div id="visit-exercises-section" class="hp-section hp-fade-up-late d-none">
+    <div class="accordion" id="visitExercisesAccordion">
+        <div class="accordion-item hp-card">
+            <h2 class="accordion-header" id="headingExercises">
+                <button
+                    class="accordion-button collapsed"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapseExercises"
+                    aria-expanded="false"
+                    aria-controls="collapseExercises"
+                >
+                    <span class="me-2">Exercises</span>
+                    {% if exercises %}
+                        <span class="badge bg-light text-muted border">{{ exercises|length }}</span>
+                    {% endif %}
+                </button>
+            </h2>
+            <div
+                id="collapseExercises"
+                class="accordion-collapse collapse"
+                aria-labelledby="headingExercises"
+                data-bs-parent="#visitExercisesAccordion"
+            >
+                <div class="accordion-body">
+                    {% if exercises %}
+                        {% for ve in exercises %}
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <a
+                                        href="{% url 'exercise_detail' ve.exercise.pk %}"
+                                        class="fw-semibold text-decoration-none text-reset"
+                                    >
+                                        {{ ve.exercise.name }}
+                                    </a>
+                                </div>
+                                {% if ve.exercise.description %}
+                                    <div class="text-muted small mb-2">
+                                        {{ ve.exercise.description|truncatechars:140 }}
+                                    </div>
+                                {% endif %}
+                                {% if ve.exercise.google_drive_file_id %}
+                                    <div class="ratio ratio-16x9">
+                                        <iframe
+                                            src="https://drive.google.com/file/d/{{ ve.exercise.google_drive_file_id }}/preview"
+                                            allow="autoplay"
+                                            allowfullscreen
+                                        ></iframe>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-muted small">No exercises attached to this visit.</div>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="hp-card h-100">
-            <div class="card-body">
-                <div class="hp-section-heading mb-2">Treatment / therapy</div>
-                {% if visit.treatment %}
-                    <div>{{ visit.treatment|linebreaksbr }}</div>
-                {% else %}
-                    <div class="text-muted small">No treatment notes recorded.</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card hp-card hp-section hp-fade-up-late">
-    <div class="card-body">
-        <div class="hp-section-heading mb-2">Exercises</div>
-        {% if exercises %}
-            <ul class="mb-0">
-                {% for ve in exercises %}
-                    <li>{{ ve.exercise.name }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <div class="text-muted small">No exercises attached to this visit.</div>
-        {% endif %}
     </div>
 </div>
 
 {% if whatsapp_url %}
-<div class="d-flex justify-content-end hp-section hp-fade-up-late">
+<div class="d-flex justify-content-end hp-section hp-fade-up-late" id="visit-whatsapp-section">
     <button
         class="btn btn-success btn-lg"
         type="button"
@@ -132,7 +189,7 @@
         data-bs-target="#whatsappModal"
     >
         <i class="bi bi-whatsapp"></i>
-        <span class="ms-1">Generate Whatsapp Receipt</span>
+        <span class="ms-1">WhatsApp Receipt</span>
     </button>
 </div>
 
@@ -161,4 +218,47 @@
     </div>
 </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tabOverview = document.getElementById('visit-tab-overview');
+    var tabExercises = document.getElementById('visit-tab-exercises');
+    var sectionOverview = document.getElementById('visit-overview-section');
+    var sectionExercises = document.getElementById('visit-exercises-section');
+    var sectionWhatsApp = document.getElementById('visit-whatsapp-section');
+
+    if (!tabOverview || !tabExercises || !sectionOverview || !sectionExercises) {
+        return;
+    }
+
+    function showOverview() {
+        tabOverview.classList.add('active');
+        tabExercises.classList.remove('active');
+        sectionOverview.classList.remove('d-none');
+        sectionExercises.classList.add('d-none');
+        if (sectionWhatsApp) {
+            sectionWhatsApp.classList.remove('d-none');
+        }
+    }
+
+    function showExercises() {
+        tabOverview.classList.remove('active');
+        tabExercises.classList.add('active');
+        sectionOverview.classList.add('d-none');
+        sectionExercises.classList.remove('d-none');
+        if (sectionWhatsApp) {
+            sectionWhatsApp.classList.add('d-none');
+        }
+    }
+
+    tabOverview.addEventListener('click', function () {
+        showOverview();
+    });
+
+    tabExercises.addEventListener('click', function () {
+        showExercises();
+    });
+});
+</script>
+
 {% endblock %}

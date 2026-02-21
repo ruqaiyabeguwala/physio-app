@@ -1,4 +1,5 @@
 import csv
+import os
 from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
 from datetime import date, timedelta
@@ -6,15 +7,22 @@ import re
 
 from django.db.models import DecimalField, F, Sum, Q
 from django.db.models.functions import Coalesce
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django import forms
 
-from .models import Appointment, ClinicSettings, Patient, Visit, VisitExercise
+from .models import Appointment, ClinicSettings, Exercise, Patient, Visit, VisitExercise
 
 from .models import Visit
+
+try:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+except ImportError:
+    service_account = None
+    build = None
 
 
 def _get_date_range(range_key: str):
@@ -231,6 +239,12 @@ def patients_export(request):
 
 
 class VisitForm(forms.ModelForm):
+    exercises = forms.ModelMultipleChoiceField(
+        queryset=Exercise.objects.all().order_by("name"),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+    )
+
     class Meta:
         model = Visit
         fields = [
@@ -254,6 +268,33 @@ class VisitForm(forms.ModelForm):
             "payment_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "notes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
             "next_appointment_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["exercises"].initial = self.instance.visit_exercises.values_list("exercise_id", flat=True)
+
+
+class ExerciseForm(forms.ModelForm):
+    class Meta:
+        model = Exercise
+        fields = [
+            "name",
+            "description",
+            "category",
+            "google_drive_file_id",
+            "file_name",
+            "mime_type",
+            "thumbnail_url",
+        ]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "category": forms.TextInput(attrs={"class": "form-control"}),
+            "google_drive_file_id": forms.HiddenInput(),
+            "file_name": forms.HiddenInput(),
+            "mime_type": forms.HiddenInput(),
+            "thumbnail_url": forms.HiddenInput(),
         }
 
 
@@ -311,6 +352,55 @@ def _format_whatsapp_number(raw: str):
     if len(digits) < 10:
         return None
     return digits
+
+
+def _get_drive_service():
+    if not service_account or not build:
+        return None
+    key_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
+    if not key_file:
+        return None
+    scopes = ["https://www.googleapis.com/auth/drive.readonly"]
+    try:
+        creds = service_account.Credentials.from_service_account_file(key_file, scopes=scopes)
+    except Exception:
+        return None
+    try:
+        return build("drive", "v3", credentials=creds, cache_discovery=False)
+    except Exception:
+        return None
+
+
+def _list_drive_media_files():
+    service = _get_drive_service()
+    folder_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID")
+    if not service or not folder_id:
+        return [], "Google Drive is not configured"
+    try:
+        query = f"'{folder_id}' in parents and trashed=false"
+        results = (
+            service.files()
+            .list(
+                q=query,
+                fields="files(id,name,mimeType,thumbnailLink)",
+                pageSize=50,
+            )
+            .execute()
+        )
+        files = results.get("files", [])
+        data = []
+        for f in files:
+            data.append(
+                {
+                    "id": f.get("id"),
+                    "name": f.get("name"),
+                    "mimeType": f.get("mimeType"),
+                    "thumbnailLink": f.get("thumbnailLink"),
+                }
+            )
+        return data, None
+    except Exception:
+        return [], "Error fetching files from Google Drive"
 
 
 def visit_create(request):
@@ -390,6 +480,14 @@ def visit_create(request):
                 visit.appointment = appointment
             _set_payment_status(visit)
             visit.save()
+
+            VisitExercise.objects.filter(visit=visit).delete()
+            exercises_selected = form.cleaned_data.get("exercises")
+            if exercises_selected:
+                VisitExercise.objects.bulk_create(
+                    [VisitExercise(visit=visit, exercise=ex) for ex in exercises_selected]
+                )
+
             _update_patient_summary(patient)
             if appointment:
                 appointment.status = Appointment.STATUS_COMPLETED
@@ -483,6 +581,14 @@ def visit_edit(request, pk):
             visit = form.save(commit=False)
             _set_payment_status(visit)
             visit.save()
+
+            VisitExercise.objects.filter(visit=visit).delete()
+            exercises_selected = form.cleaned_data.get("exercises")
+            if exercises_selected:
+                VisitExercise.objects.bulk_create(
+                    [VisitExercise(visit=visit, exercise=ex) for ex in exercises_selected]
+                )
+
             _update_patient_summary(patient)
             return redirect("visit_detail", pk=visit.pk)
     else:
@@ -587,8 +693,100 @@ def appointment_delete(request, pk):
     return HttpResponseRedirect(reverse("appointments_list"))
 
 
+def _import_exercises_stub():
+    if Exercise.objects.exists():
+        return 0
+    samples = [
+        {
+            "name": "Shoulder pendulum",
+            "description": "Gentle shoulder mobility exercise.",
+            "category": "shoulder",
+            "google_drive_file_id": "sample-shoulder-pendulum",
+            "file_name": "Shoulder pendulum",
+            "mime_type": "video/mp4",
+        },
+        {
+            "name": "Knee extension",
+            "description": "Seated knee extension strengthening.",
+            "category": "knee",
+            "google_drive_file_id": "sample-knee-extension",
+            "file_name": "Knee extension",
+            "mime_type": "video/mp4",
+        },
+        {
+            "name": "Back bridge",
+            "description": "Bridge exercise for lower back and glutes.",
+            "category": "back",
+            "google_drive_file_id": "sample-back-bridge",
+            "file_name": "Back bridge",
+            "mime_type": "video/mp4",
+        },
+    ]
+    Exercise.objects.bulk_create(
+        [
+            Exercise(
+                name=item["name"],
+                description=item["description"],
+                category=item["category"],
+                google_drive_file_id=item["google_drive_file_id"],
+                file_name=item["file_name"],
+                mime_type=item["mime_type"],
+            )
+            for item in samples
+        ]
+    )
+    return len(samples)
+
+
 def exercises_list(request):
-    return HttpResponse("Exercises list")
+    query = request.GET.get("q", "").strip()
+    category = request.GET.get("category", "").strip()
+
+    exercises_qs = Exercise.objects.all().order_by("name")
+    if query:
+        exercises_qs = exercises_qs.filter(Q(name__icontains=query) | Q(description__icontains=query))
+    if category:
+        exercises_qs = exercises_qs.filter(category=category)
+
+    categories = (
+        Exercise.objects.exclude(category__isnull=True)
+        .exclude(category__exact="")
+        .order_by("category")
+        .values_list("category", flat=True)
+        .distinct()
+    )
+
+    context = {
+        "exercises": exercises_qs,
+        "query": query,
+        "selected_category": category,
+        "categories": categories,
+    }
+    return render(request, "exercises/list.html", context)
+
+
+def exercises_drive_files(request):
+    files, error = _list_drive_media_files()
+    return JsonResponse({"files": files, "error": error})
+
+
+def exercise_create(request):
+    if request.method == "POST":
+        form = ExerciseForm(request.POST)
+        if form.is_valid():
+            exercise = form.save()
+            return redirect("exercises_list")
+    else:
+        form = ExerciseForm()
+    context = {
+        "form": form,
+    }
+    return render(request, "exercises/form.html", context)
+
+
+def exercise_detail(request, pk):
+    exercise = get_object_or_404(Exercise, pk=pk)
+    return render(request, "exercises/detail.html", {"exercise": exercise})
 
 
 def pending_payments(request):

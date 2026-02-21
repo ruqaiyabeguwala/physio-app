@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div>
+        <h1 class="hp-page-title mb-1">New exercise</h1>
+        <div class="hp-page-subtitle">Create an exercise and link it to Google Drive</div>
+    </div>
+    <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a href="{% url 'exercises_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+            <span class="ms-1 d-none d-sm-inline">Back to exercises</span>
+        </a>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-delayed">
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="text-danger small">{{ form.name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Category</label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                        <div class="text-danger small">{{ form.category.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">
+                        Example: Shoulder, Knee, Back.
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Description / instructions</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div class="text-danger small">{{ form.description.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label d-flex justify-content-between">
+                        <span>Google Drive file</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#drivePickerModal"
+                        >
+                            <i class="bi bi-cloud-arrow-down"></i>
+                            <span class="ms-1 d-none d-sm-inline">Choose from Drive</span>
+                        </button>
+                    </label>
+
+                    {{ form.google_drive_file_id }}
+                    {{ form.file_name }}
+                    {{ form.mime_type }}
+                    {{ form.thumbnail_url }}
+
+                    <div class="border rounded px-3 py-2 bg-light">
+                        <div id="drive-file-summary">
+                            {% if form.instance.google_drive_file_id %}
+                                Linked file: <strong>{{ form.instance.file_name }}</strong>
+                            {% else %}
+                                <span class="text-muted small">No file selected yet.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if form.google_drive_file_id.errors %}
+                        <div class="text-danger small">{{ form.google_drive_file_id.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+                <a href="{% url 'exercises_list' %}" class="btn btn-outline-secondary me-2">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    Save exercise
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="drivePickerModal" tabindex="-1" aria-labelledby="drivePickerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="drivePickerLabel">Choose file from Google Drive</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="drive-picker-loading" class="text-center text-muted">
+                    Loading files from Google Drive...
+                </div>
+                <div id="drive-picker-error" class="text-danger small d-none"></div>
+                <div id="drive-picker-list" class="list-group d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('drivePickerModal');
+    if (!modalEl) return;
+    var loaded = false;
+    var loadingEl = document.getElementById('drive-picker-loading');
+    var errorEl = document.getElementById('drive-picker-error');
+    var listEl = document.getElementById('drive-picker-list');
+    var fileIdInput = document.getElementById('id_google_drive_file_id');
+    var fileNameInput = document.getElementById('id_file_name');
+    var mimeTypeInput = document.getElementById('id_mime_type');
+    var thumbnailInput = document.getElementById('id_thumbnail_url');
+    var summaryEl = document.getElementById('drive-file-summary');
+
+    modalEl.addEventListener('show.bs.modal', function () {
+        if (loaded) return;
+        loadingEl.classList.remove('d-none');
+        errorEl.classList.add('d-none');
+        listEl.classList.add('d-none');
+        listEl.innerHTML = '';
+        fetch("{% url 'exercises_drive_files' %}")
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                loadingEl.classList.add('d-none');
+                if (data.error) {
+                    errorEl.textContent = data.error;
+                    errorEl.classList.remove('d-none');
+                    return;
+                }
+                if (!data.files || !data.files.length) {
+                    errorEl.textContent = "No files found in the configured Google Drive folder.";
+                    errorEl.classList.remove('d-none');
+                    return;
+                }
+                data.files.forEach(function (file) {
+                    var item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                    var label = document.createElement('div');
+                    label.innerHTML = "<div>" + file.name + "</div><div class=\"small text-muted\">" + (file.mimeType || "") + "</div>";
+                    item.appendChild(label);
+                    item.addEventListener('click', function () {
+                        if (fileIdInput) fileIdInput.value = file.id || "";
+                        if (fileNameInput) fileNameInput.value = file.name || "";
+                        if (mimeTypeInput) mimeTypeInput.value = file.mimeType || "";
+                        if (thumbnailInput) thumbnailInput.value = file.thumbnailLink || "";
+                        if (summaryEl) {
+                            summaryEl.innerHTML = "Linked file: <strong>" + (file.name || "") + "</strong>";
+                        }
+                        var bsModal = bootstrap.Modal.getInstance(modalEl);
+                        if (bsModal) {
+                            bsModal.hide();
+                        }
+                    });
+                    listEl.appendChild(item);
+                });
+                listEl.classList.remove('d-none');
+                loaded = true;
+            })
+            .catch(function () {
+                loadingEl.classList.add('d-none');
+                errorEl.textContent = "Unable to load files from Google Drive.";
+                errorEl.classList.remove('d-none');
+            });
+    });
+});
+</script>
+
+{% endblock %}
+

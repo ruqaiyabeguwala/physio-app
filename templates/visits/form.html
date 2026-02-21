@@ -143,6 +143,48 @@
                         <div class="text-danger small">{{ form.treatment.errors }}</div>
                     {% endif %}
                 </div>
+                <div class="col-12">
+                    <label class="form-label d-flex justify-content-between align-items-center">
+                        <span>Exercises</span>
+                        <a
+                            href="{% url 'exercises_list' %}"
+                            target="_blank"
+                            class="btn btn-sm btn-outline-secondary"
+                        >
+                            <i class="bi bi-box-arrow-up-right"></i>
+                            <span class="ms-1 d-none d-sm-inline">Exercise library</span>
+                        </a>
+                    </label>
+
+                    <div id="exercise-chips" class="d-flex flex-wrap gap-2 mb-2">
+                    </div>
+
+                    <div class="position-relative">
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="exercise-search-input"
+                            placeholder="Type to search exercises"
+                            autocomplete="off"
+                        >
+                        <div
+                            id="exercise-suggestions"
+                            class="list-group position-absolute w-100 shadow-sm"
+                            style="z-index: 1050; max-height: 240px; overflow-y: auto; display: none;"
+                        ></div>
+                    </div>
+
+                    <div class="d-none">
+                        {{ form.exercises }}
+                    </div>
+
+                    {% if form.exercises.errors %}
+                        <div class="text-danger small">{{ form.exercises.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">
+                        Start typing to search exercises, then press Enter or click to add.
+                    </div>
+                </div>
                 <div class="col-md-6">
                     <label class="form-label">Next appointment date</label>
                     {{ form.next_appointment_date }}
@@ -220,5 +262,144 @@
     </div>
 </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var selectEl = document.getElementById('id_exercises');
+    var inputEl = document.getElementById('exercise-search-input');
+    var chipsEl = document.getElementById('exercise-chips');
+    var suggestionsEl = document.getElementById('exercise-suggestions');
+
+    if (!selectEl || !inputEl || !chipsEl || !suggestionsEl) {
+        return;
+    }
+
+    var allExercises = [];
+    Array.prototype.forEach.call(selectEl.options, function (opt) {
+        if (opt.value) {
+            allExercises.push({
+                id: opt.value,
+                name: opt.text
+            });
+        }
+    });
+
+    function getSelectedIds() {
+        var ids = [];
+        Array.prototype.forEach.call(selectEl.options, function (opt) {
+            if (opt.selected && opt.value) {
+                ids.push(opt.value);
+            }
+        });
+        return ids;
+    }
+
+    function addChip(id) {
+        var opt = Array.prototype.find.call(selectEl.options, function (o) {
+            return o.value === id;
+        });
+        if (!opt) return;
+
+        if (chipsEl.querySelector('[data-exercise-id="' + id + '"]')) {
+            return;
+        }
+
+        opt.selected = true;
+
+        var chip = document.createElement('span');
+        chip.className = 'badge bg-primary d-flex align-items-center gap-1';
+        chip.setAttribute('data-exercise-id', id);
+
+        var label = document.createElement('span');
+        label.textContent = opt.text;
+        chip.appendChild(label);
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-close btn-close-white btn-sm ms-1';
+        btn.setAttribute('aria-label', 'Remove');
+        btn.addEventListener('click', function () {
+            opt.selected = false;
+            chipsEl.removeChild(chip);
+        });
+        chip.appendChild(btn);
+
+        chipsEl.appendChild(chip);
+    }
+
+    function refreshInitialChips() {
+        getSelectedIds().forEach(function (id) {
+            addChip(id);
+        });
+    }
+
+    function clearSuggestions() {
+        suggestionsEl.innerHTML = '';
+        suggestionsEl.style.display = 'none';
+    }
+
+    function showSuggestions(matches) {
+        suggestionsEl.innerHTML = '';
+        if (!matches.length) {
+            suggestionsEl.style.display = 'none';
+            return;
+        }
+        matches.forEach(function (item) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action';
+            btn.textContent = item.name;
+            btn.addEventListener('click', function () {
+                addChip(item.id);
+                inputEl.value = '';
+                clearSuggestions();
+                inputEl.focus();
+            });
+            suggestionsEl.appendChild(btn);
+        });
+        suggestionsEl.style.display = 'block';
+    }
+
+    var debounceTimer = null;
+    inputEl.addEventListener('input', function () {
+        var query = inputEl.value.trim().toLowerCase();
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(function () {
+            if (!query) {
+                clearSuggestions();
+                return;
+            }
+            var selectedIds = getSelectedIds();
+            var matches = allExercises.filter(function (item) {
+                if (selectedIds.indexOf(item.id) !== -1) return false;
+                return item.name.toLowerCase().indexOf(query) !== -1;
+            }).slice(0, 10);
+            showSuggestions(matches);
+        }, 120);
+    });
+
+    inputEl.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            var first = suggestionsEl.querySelector('.list-group-item');
+            if (first) {
+                first.click();
+            }
+        } else if (event.key === 'Escape') {
+            clearSuggestions();
+        }
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!suggestionsEl.contains(event.target) && event.target !== inputEl) {
+            clearSuggestions();
+        }
+    });
+
+    refreshInitialChips();
+});
+</script>
 
 {% endblock %}

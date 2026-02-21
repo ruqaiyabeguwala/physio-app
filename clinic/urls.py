@@ -18,6 +18,9 @@ urlpatterns = [
     path('appointments/<int:pk>/edit/', views.appointment_edit, name='appointment_edit'),
     path('appointments/<int:pk>/delete/', views.appointment_delete, name='appointment_delete'),
     path('exercises/', views.exercises_list, name='exercises_list'),
+    path('exercises/new/', views.exercise_create, name='exercise_create'),
+    path('exercises/<int:pk>/', views.exercise_detail, name='exercise_detail'),
+    path('exercises/drive-files/', views.exercises_drive_files, name='exercises_drive_files'),
     path('pending-payments/', views.pending_payments, name='pending_payments'),
     path('settings/', views.settings_view, name='settings'),
 ]

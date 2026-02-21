@@ -355,7 +355,47 @@ Files touched:
 - `clinic/urls.py`.
 - Templates under `templates/exercises/` and visit form.
 
-Step 10 – Pending Payments Page and Settings
+Step 10 – Visits List Page
+--------------------------
+
+Goal:
+
+- Add a Visits page that lists all visits sorted by date with inline actions.
+
+Assistant actions:
+
+- Create Visits list:
+  - View: `visits_list`:
+    - Lists all non-deleted visits, newest first.
+    - Shows patient name, visit date, fee, amount paid, and amount due.
+    - Provides per-row actions: Edit visit, Delete visit (soft delete), Clear due.
+  - Template: `templates/visits/list.html`:
+    - Table layout matching dashboard/patients style.
+    - Includes:
+      - Search box (by patient name or phone).
+      - Filter controls for date range (Today / Week / Month / Year) and payment status.
+      - Sort controls (e.g. by date, amount due).
+  - URLs:
+    - `/visits/` for list.
+    - `/visits/<id>/delete/` for delete.
+    - `/visits/<id>/clear-due/` for clearing dues from the list page.
+- Clear dues from list:
+  - Reuse existing clear-due logic where possible.
+  - Add a small modal or inline form to enter amount to clear and apply it to the selected visit.
+
+What you will run:
+
+- Manual checks via browser:
+  - Open `/visits/` and verify search/sort/filter.
+  - Edit, delete, and clear dues for visits and confirm dashboard/patient summaries update correctly.
+
+Files touched:
+
+- `clinic/views.py`.
+- `clinic/urls.py`.
+- Templates under `templates/visits/` (new list template, optional shared partials).
+
+Step 11 – Pending Payments Page and Settings
 --------------------------------------------
 
 Goal:
@@ -389,7 +429,7 @@ Files touched:
 - `clinic/urls.py`.
 - Templates for pending payments and settings.
 
-Step 11 – CSV Export Endpoints
+Step 12 – CSV Export Endpoints
 ------------------------------
 
 Goal:
@@ -417,7 +457,7 @@ Files touched:
 - `clinic/views.py`.
 - `clinic/urls.py`.
 
-Step 12 – Monthly Report Email
+Step 13 – Monthly Report Email
 ------------------------------
 
 Goal:
@@ -445,7 +485,7 @@ Files touched:
 - `clinic/management/commands/send_monthly_report.py`.
 - `settings.py` email configuration.
 
-Step 13 – Testing and Basic QA
+Step 14 – Testing and Basic QA
 ------------------------------
 
 Goal:

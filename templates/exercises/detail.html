@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'exercises_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="hp-page-title mb-1">
+                {{ exercise.name }}
+            </h1>
+            <div class="hp-page-subtitle">
+                {% if exercise.category %}
+                    {{ exercise.category|title }}
+                {% else %}
+                    <span class="text-muted">Exercise details</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a href="{% url 'exercise_create' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-plus-lg"></i>
+            <span class="ms-1 d-none d-sm-inline">New exercise</span>
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 hp-section hp-fade-up-delayed">
+    <div class="col-md-5">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Details</div>
+                <div class="mb-2">
+                    <strong>Name:</strong>
+                    <span class="ms-1">{{ exercise.name }}</span>
+                </div>
+                <div class="mb-2">
+                    <strong>Category:</strong>
+                    <span class="ms-1">
+                        {% if exercise.category %}
+                            {{ exercise.category|title }}
+                        {% else %}
+                            <span class="text-muted small">Not set</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="mb-2">
+                    <strong>Description:</strong>
+                </div>
+                <div>
+                    {% if exercise.description %}
+                        <div>{{ exercise.description|linebreaksbr }}</div>
+                    {% else %}
+                        <div class="text-muted small">No description provided.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Media</div>
+                {% if exercise.google_drive_file_id %}
+                    <div class="ratio ratio-16x9 mb-2">
+                        <iframe
+                            src="https://drive.google.com/file/d/{{ exercise.google_drive_file_id }}/preview"
+                            allow="autoplay"
+                            allowfullscreen
+                        ></iframe>
+                    </div>
+                    <div class="text-muted small">
+                        {% if exercise.file_name %}
+                            {{ exercise.file_name }}
+                        {% endif %}
+                        {% if exercise.mime_type %}
+                            · {{ exercise.mime_type }}
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="text-muted small">
+                        No Google Drive file linked to this exercise yet.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
