@@ -9,6 +9,13 @@
         </div>
     </div>
     <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a
+            href="{% url 'visits_export' %}?range={{ range_key }}&status={{ status_filter }}&sort={{ sort_key }}&q={{ query|urlencode }}"
+            class="btn btn-sm btn-outline-secondary"
+        >
+            <i class="bi bi-download"></i>
+            <span class="ms-1 d-none d-sm-inline">Export CSV</span>
+        </a>
         <a href="{% url 'visit_create' %}" class="btn btn-sm btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span class="ms-1 d-none d-sm-inline">New visit</span>
@@ -230,6 +237,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (amountInput) {
                 amountInput.value = amount || '';
+            }
+            if (form) {
+                var nextInput = form.querySelector('input[name="next"]');
+                if (!nextInput) {
+                    nextInput = document.createElement('input');
+                    nextInput.type = 'hidden';
+                    nextInput.name = 'next';
+                    form.appendChild(nextInput);
+                }
+                nextInput.value = window.location.pathname + window.location.search;
             }
         });
     }

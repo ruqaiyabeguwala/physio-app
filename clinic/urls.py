@@ -8,6 +8,7 @@ urlpatterns = [
     path('patients/<int:pk>/', views.patient_detail, name='patient_detail'),
     path('patients/<int:pk>/edit/', views.patient_edit, name='patient_edit'),
     path('patients/export/', views.patients_export, name='patients_export'),
+    path('visits/export/', views.visits_export, name='visits_export'),
     path('visits/', views.visits_list, name='visits_list'),
     path('visits/new/', views.visit_create, name='visit_create'),
     path('visits/<int:pk>/', views.visit_detail, name='visit_detail'),
@@ -24,5 +25,6 @@ urlpatterns = [
     path('exercises/<int:pk>/', views.exercise_detail, name='exercise_detail'),
     path('exercises/drive-files/', views.exercises_drive_files, name='exercises_drive_files'),
     path('pending-payments/', views.pending_payments, name='pending_payments'),
+    path('pending-payments/export/', views.pending_payments_export, name='pending_payments_export'),
     path('settings/', views.settings_view, name='settings'),
 ]

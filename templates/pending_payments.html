@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div>
+        <h1 class="hp-page-title mb-1">Pending payments</h1>
+        <div class="hp-page-subtitle">
+            All visits with outstanding dues. Use filters to focus on older dues.
+        </div>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-delayed">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end mb-3">
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label">Age of dues</label>
+                <select name="age" class="form-select form-select-sm">
+                    <option value="all" {% if age_key == "all" %}selected{% endif %}>All</option>
+                    <option value="7" {% if age_key == "7" %}selected{% endif %}>Older than 7 days</option>
+                    <option value="30" {% if age_key == "30" %}selected{% endif %}>Older than 30 days</option>
+                    <option value="90" {% if age_key == "90" %}selected{% endif %}>Older than 90 days</option>
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label d-none d-sm-block">&nbsp;</label>
+                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-funnel"></i>
+                    <span class="ms-1">Apply</span>
+                </button>
+            </div>
+            <div class="col-sm-12 col-md-6 text-sm-start text-md-end mt-2 mt-md-0">
+                <a href="{% url 'pending_payments_export' %}?age={{ age_key }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-download"></i>
+                    <span class="ms-1">Export CSV</span>
+                </a>
+            </div>
+        </form>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="small text-muted">
+                Showing pending dues as of {{ today }}.
+            </div>
+            <div class="fw-semibold">
+                Total pending: <span class="text-danger">₹{{ total_due }}</span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Visit date</th>
+                        <th>Patient</th>
+                        <th>Mobile</th>
+                        <th class="text-end">Fee</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-end">Due</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if pending_visits %}
+                        {% for visit in pending_visits %}
+                            <tr>
+                                <td>{{ visit.visit_date }}</td>
+                                <td>
+                                    <a href="{% url 'patient_detail' visit.patient.pk %}" class="text-decoration-none">
+                                        {{ visit.patient.full_name }}
+                                    </a>
+                                </td>
+                                <td>{{ visit.patient.mobile }}</td>
+                                <td class="text-end">₹{{ visit.visit_fee }}</td>
+                                <td class="text-end">₹{{ visit.amount_paid }}</td>
+                                <td class="text-end">
+                                    <span class="text-danger">₹{{ visit.balance }}</span>
+                                </td>
+                                <td>
+                                    {% if visit.payment_status == 'partial' %}
+                                        <span class="badge bg-warning text-dark">Partial</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary me-1">
+                                        View
+                                    </a>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#pendingClearDueModal"
+                                        data-url="{% url 'visit_clear_due' visit.pk %}"
+                                        data-amount="{{ visit.balance }}"
+                                    >
+                                        Clear due
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted small">
+                                No pending payments for the selected filters.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="pendingClearDueModal" tabindex="-1" aria-labelledby="pendingClearDueLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" id="pendingClearDueForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pendingClearDueLabel">Clear visit due</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">
+                        Enter the amount to clear for this visit.
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input
+                            type="number"
+                            name="clear_amount"
+                            id="pendingClearDueAmount"
+                            class="form-control text-end"
+                            step="0.01"
+                            min="0"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Clear due</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('pendingClearDueModal');
+    if (!modalEl) return;
+    modalEl.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        if (!button) return;
+        var url = button.getAttribute('data-url');
+        var amount = button.getAttribute('data-amount');
+        var form = document.getElementById('pendingClearDueForm');
+        var amountInput = document.getElementById('pendingClearDueAmount');
+        if (form && url) {
+            form.action = url;
+        }
+        if (amountInput) {
+            amountInput.value = amount || '';
+        }
+        if (form) {
+            var nextInput = form.querySelector('input[name="next"]');
+            if (!nextInput) {
+                nextInput = document.createElement('input');
+                nextInput.type = 'hidden';
+                nextInput.name = 'next';
+                form.appendChild(nextInput);
+            }
+            nextInput.value = window.location.pathname + window.location.search;
+        }
+    });
+});
+</script>
+
+{% endblock %}

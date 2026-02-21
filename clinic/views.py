@@ -238,6 +238,51 @@ def patients_export(request):
     return response
 
 
+def visits_export(request):
+    range_key = request.GET.get("range", "today")
+    range_key, start_date, end_date = _get_date_range(range_key)
+
+    visits_qs = (
+        Visit.objects.select_related("patient")
+        .filter(is_deleted=False, visit_date__range=(start_date, end_date))
+        .order_by("visit_date", "id")
+    )
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename=\"visits.csv\"'
+
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "Visit ID",
+            "Patient",
+            "Mobile",
+            "Visit date",
+            "Visit fee",
+            "Amount paid",
+            "Amount due",
+            "Payment status",
+        ]
+    )
+    for visit in visits_qs:
+        fee = visit.visit_fee or Decimal("0.00")
+        paid = visit.amount_paid or Decimal("0.00")
+        due = fee - paid
+        writer.writerow(
+            [
+                visit.pk,
+                visit.patient.full_name,
+                visit.patient.mobile,
+                visit.visit_date,
+                fee,
+                paid,
+                due,
+                visit.get_payment_status_display(),
+            ]
+        )
+    return response
+
+
 def visits_list(request):
     range_key = request.GET.get("range", "today")
     status_filter = request.GET.get("status", "all")
@@ -616,7 +661,11 @@ def visit_clear_due(request, pk):
                 visit.payment_date = timezone.localdate()
             visit.save(update_fields=["amount_paid", "payment_status", "payment_date"])
             _update_patient_summary(visit.patient)
-    return redirect("patient_detail", pk=visit.patient.pk)
+        next_url = request.POST.get("next")
+        if next_url:
+            return redirect(next_url)
+        return redirect("patient_detail", pk=visit.patient.pk)
+    return redirect("visit_detail", pk=visit.pk)
 
 
 def visit_delete(request, pk):
@@ -685,6 +734,23 @@ class AppointmentForm(forms.ModelForm):
             "scheduled_time": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
             "reason": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
             "notes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+        }
+
+
+class SettingsForm(forms.ModelForm):
+    class Meta:
+        model = ClinicSettings
+        fields = [
+            "clinic_name",
+            "owner_name",
+            "owner_email",
+            "default_visit_fee",
+        ]
+        widgets = {
+            "clinic_name": forms.TextInput(attrs={"class": "form-control"}),
+            "owner_name": forms.TextInput(attrs={"class": "form-control"}),
+            "owner_email": forms.EmailInput(attrs={"class": "form-control"}),
+            "default_visit_fee": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         }
 
 
@@ -847,8 +913,100 @@ def exercise_detail(request, pk):
 
 
 def pending_payments(request):
-    return HttpResponse("Pending payments")
+    today = timezone.localdate()
+    age_key = request.GET.get("age", "all")
+
+    pending_qs = (
+        Visit.objects.select_related("patient")
+        .filter(is_deleted=False)
+        .exclude(payment_status=Visit.STATUS_PAID)
+    )
+
+    if age_key in {"7", "30", "90"}:
+        cutoff = today - timedelta(days=int(age_key))
+        pending_qs = pending_qs.filter(visit_date__lte=cutoff)
+    else:
+        age_key = "all"
+
+    balance_expr = F("visit_fee") - F("amount_paid")
+    totals = pending_qs.aggregate(
+        total_due=Coalesce(
+            Sum(balance_expr, output_field=DecimalField(max_digits=10, decimal_places=2)),
+            0,
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        )
+    )
+
+    pending_visits = pending_qs.order_by("visit_date", "id")
+
+    context = {
+        "pending_visits": pending_visits,
+        "age_key": age_key,
+        "today": today,
+        "total_due": totals["total_due"],
+    }
+    return render(request, "pending_payments.html", context)
+
+
+def pending_payments_export(request):
+    today = timezone.localdate()
+    age_key = request.GET.get("age", "all")
+
+    pending_qs = (
+        Visit.objects.select_related("patient")
+        .filter(is_deleted=False)
+        .exclude(payment_status=Visit.STATUS_PAID)
+    )
+
+    if age_key in {"7", "30", "90"}:
+        cutoff = today - timedelta(days=int(age_key))
+        pending_qs = pending_qs.filter(visit_date__lte=cutoff)
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename=\"pending_payments.csv\"'
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "Visit ID",
+            "Patient",
+            "Mobile",
+            "Visit date",
+            "Visit fee",
+            "Amount paid",
+            "Amount due",
+            "Payment status",
+        ]
+    )
+    balance_expr = F("visit_fee") - F("amount_paid")
+    for visit in pending_qs.order_by("visit_date", "id"):
+        fee = visit.visit_fee or Decimal("0.00")
+        paid = visit.amount_paid or Decimal("0.00")
+        due = fee - paid
+        writer.writerow(
+            [
+                visit.pk,
+                visit.patient.full_name,
+                visit.patient.mobile,
+                visit.visit_date,
+                fee,
+                paid,
+                due,
+                visit.get_payment_status_display(),
+            ]
+        )
+    return response
 
 
 def settings_view(request):
-    return HttpResponse("Settings")
+    instance = ClinicSettings.objects.first()
+    if request.method == "POST":
+        form = SettingsForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            return redirect("settings")
+    else:
+        form = SettingsForm(instance=instance)
+    context = {
+        "form": form,
+    }
+    return render(request, "settings.html", context)
