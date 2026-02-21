@@ -150,7 +150,7 @@ Assistant actions:
   - `templates/base.html` with:
     - Top navigation (Hussain Physio, Dashboard, Patients, Appointments, Exercises, Settings).
     - Content block for all pages.
-    - Basic integration of Bootstrap CSS/JS.
+    - Basic integration of Bootstrap CSS/JS plus the shared `static/css/main.css` theme so every page uses the same blue-and-white medical dashboard style.
 
 What you will run:
 
@@ -189,6 +189,7 @@ Assistant actions:
     - Bar chart placeholder (`<canvas>`).
     - Pending payments card/table.
     - Visits table with Today/Month/Year filters and search box.
+    - Use the shared `hp-card`, `hp-section`, and header classes so the layout matches other pages.
 - Wire:
   - Dashboard URL to this view.
 
@@ -226,6 +227,7 @@ Assistant actions:
   - `templates/patients/list.html`
   - `templates/patients/form.html`
   - `templates/patients/detail.html`
+  - All patient templates extend `base.html` and reuse the shared theme classes (`hp-card`, `hp-section`, header layout) for a consistent look.
 - Add URLs:
   - `/patients/`, `/patients/new/`, `/patients/<id>/`, `/patients/<id>/edit/`, `/patients/export/`.
 
@@ -265,6 +267,7 @@ Assistant actions:
 - Create templates:
   - `templates/visits/form.html`
   - `templates/visits/detail.html`
+  - Visit templates also extend `base.html` and reuse the same header + card layout classes so the UI stays consistent with the dashboard and patients pages.
 - Add URLs:
   - `/visits/new/`, `/visits/<id>/`, `/visits/<id>/edit/`.
 

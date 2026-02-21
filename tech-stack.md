@@ -39,16 +39,20 @@ Core Technologies
     - Easily handles the expected scale (tens of thousands of rows).
 
 - Frontend/UI:
-  - Django Templates (server-rendered HTML).
-  - CSS Framework:
-    - Bootstrap or similar CSS framework for layout and components.
+  - Django Templates (server-rendered HTML) extending a shared `base.html`.
+  - CSS:
+    - Bootstrap for layout and base components.
+    - A single custom stylesheet `static/css/main.css` for:
+      - Blue-and-white medical theme.
+      - Card styles (`hp-card`, `hp-card-accent`).
+      - Page layout helpers (`hp-section`, `hp-page-header`, etc.).
   - JavaScript:
     - Minimal custom JS for:
       - Form enhancements (date pickers, modals).
       - Dashboard charts (using a lightweight chart library such as Chart.js).
   - Why:
     - No separate frontend stack (React/Angular) to manage.
-    - Fast to build form-heavy, table-heavy clinic flows.
+    - Fast to build form-heavy, table-heavy clinic flows with a consistent theme across all pages.
 
 Integrations
 ------------

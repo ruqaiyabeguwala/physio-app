@@ -12,9 +12,9 @@ Global UI Principles
 --------------------
 
 - Overall look:
-  - Clean, minimal interface with 1 primary accent color.
-  - Light background (off-white), white cards, subtle shadows.
-  - No unnecessary decorations or gradients.
+  - Clean, minimal interface with a single primary blue accent.
+  - Soft blue/white background, white cards, subtle shadows.
+  - All pages use the same base layout (`base.html`) and theme from `static/css/main.css`.
 - Typography:
   - One professional sans-serif (Inter, Roboto, or system).
   - Consistent sizes:
@@ -29,10 +29,13 @@ Global UI Principles
     - Pending/partial = amber.
     - Overdue (older dues) = muted red.
 - Components:
-  - Use cards for major blocks (summary, charts, tables).
-  - Tables should be compact with row hover, not heavy borders.
+  - Use consistent cards for the main blocks (summary, charts, tables, forms) using the shared `hp-card` style.
+  - Sections follow the same pattern on every page:
+    - Page header = title + primary actions (and filters) using the shared header layout.
+    - Content grouped into `.hp-section` blocks with even spacing.
+  - Tables are compact with row hover, minimal borders, and scroll horizontally on small screens.
   - Buttons:
-    - One primary button per view (filled).
+    - One primary blue button per view (filled).
     - Secondary actions as outline/ghost buttons or dropdown menu.
 
 Top-Level Navigation

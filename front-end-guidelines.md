@@ -25,21 +25,21 @@ Brand and Layout
 Colors
 ------
 
-- Base colors:
-  - Page background: light grey or off-white (e.g. `#f5f5f5` or similar).
+- Base theme (implemented in `static/css/main.css` and used on all pages):
+  - Page background: soft blue/white gradient (`#e3f2fd` → `#ffffff`).
   - Card background: white (`#ffffff`).
-  - Text color: dark grey/near black (e.g. `#111827` or `#1f2933`).
-  - Borders/dividers: very light grey (e.g. `#e5e7eb`).
+  - Text color: dark navy/grey (`#0b1020`).
+  - Borders/dividers: subtle blue-tinted grey (`rgba(13, 71, 161, 0.08)`).
 - Accent colors:
-  - Primary: a calm, professional blue/teal (for example, `#2563eb`).
-    - Use for primary buttons, active navigation, primary links, and key highlights.
-  - Secondary: neutral grey (`#6b7280`) for less prominent buttons and labels.
+  - Primary: medical blue (`#0d47a1` with softer variant `#1976d2`).
+    - Used for navbar, primary buttons, and key highlights.
+  - Secondary: neutral grey/blue (`#607d8b`) for helper text and subtitles.
 - Status colors:
-  - Success/paid: soft green (e.g. `#16a34a` used lightly).
-  - Warning/pending/partial: amber (e.g. `#f59e0b`).
-  - Danger/overdue: muted red (e.g. `#dc2626`), used sparingly.
+  - Success/paid: green gradient (`#43a047` → `#2e7d32`).
+  - Warning/pending/partial: amber gradient (`#ffb300` → `#ffa000`).
+  - Danger/overdue: red gradient (`#e53935` → `#c62828`).
 - Usage rules:
-  - Do not introduce more accent colors.
+  - Keep the palette limited to these colors for a consistent, calm medical feel.
   - Use color primarily to communicate meaning (status, selection) and not decoration.
 
 Typography
@@ -82,10 +82,10 @@ Spacing and Sizing
 Cards
 -----
 
-- Appearance:
+- Appearance (reused across dashboard, patients, visits, appointments, etc.):
   - White background.
-  - Slight border radius (4–8 px).
-  - Very subtle shadow or border to separate from background.
+  - Rounded corners (around 16–18 px).
+  - Very subtle border and soft shadow to separate from background.
 - Content structure:
   - Title row:
     - Left: card title.
@@ -93,10 +93,14 @@ Cards
   - Body:
     - Key number or chart at the top.
     - Supporting text or table below.
+- Implementation:
+  - Use the shared `hp-card` class on all card-style containers.
+  - For highlighted cards (e.g. Pending amount), use `hp-card hp-card-accent`.
 - Examples:
   - Dashboard summary cards (Total revenue, Pending amount, Visits/Patients).
   - Revenue over time chart card.
   - Pending payments card.
+  - Patient summary cards on the patient details page.
 
 Buttons and Links
 -----------------
@@ -249,12 +253,14 @@ Integration with Tech Stack
 ---------------------------
 
 - CSS:
-  - Implement these guidelines using a utility-friendly framework like Bootstrap.
-  - Where possible, centralize custom styles in a small set of CSS files so the design system is consistent.
+  - Implement these guidelines using Bootstrap plus a small custom stylesheet:
+    - `static/css/main.css` defines palette, spacing, card styles, and animations.
+  - Reuse shared classes (`hp-card`, `hp-section`, `hp-page-header`, `hp-page-title`, `hp-page-subtitle`) on every page to keep the theme identical.
 - Templates:
-  - Use a base Django template defining:
+  - Use a single base Django template (`templates/base.html`) defining:
     - Global header/navigation.
     - Main content container.
-    - Consistent card and table styles.
-  - Individual pages extend the base template and fill defined content blocks.
-
+    - Inclusion of Bootstrap and `main.css`.
+  - Individual pages extend the base template and:
+    - Use the same header pattern (title + primary actions).
+    - Wrap major blocks in `.hp-section` and cards in `.hp-card`.

@@ -15,6 +15,7 @@ Version: v1 (MVP)
   - Tracking revenue and pending dues.
   - Sharing exercise content stored on Google Drive.
   - Sending visit summaries/exercise links via WhatsApp (manually) and monthly summaries via email.
+  - Presenting all screens with a consistent blue-and-white medical dashboard theme.
 
 2. Goals & Non-Goals
 --------------------
