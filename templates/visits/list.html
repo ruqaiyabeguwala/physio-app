@@ -25,7 +25,7 @@
 
 <div class="card hp-card hp-section hp-fade-up-delayed">
     <div class="card-body">
-        <form method="get" class="row g-2 align-items-end mb-3">
+        <form method="get" class="row g-2 align-items-end mb-3 hp-filters-form">
             <div class="col-md-4 col-sm-6">
                 <label class="form-label">Search</label>
                 <input
@@ -38,7 +38,7 @@
             </div>
             <div class="col-md-3 col-sm-6">
                 <label class="form-label">Date range</label>
-                <select name="range" class="form-select form-select-sm">
+                <select name="range" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="today" {% if range_key == "today" %}selected{% endif %}>Today</option>
                     <option value="week" {% if range_key == "week" %}selected{% endif %}>This week</option>
                     <option value="month" {% if range_key == "month" %}selected{% endif %}>This month</option>
@@ -48,7 +48,7 @@
             </div>
             <div class="col-md-3 col-sm-6">
                 <label class="form-label">Payment status</label>
-                <select name="status" class="form-select form-select-sm">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
                     <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Pending</option>
                     <option value="partial" {% if status_filter == "partial" %}selected{% endif %}>Partial</option>
@@ -57,18 +57,12 @@
             </div>
             <div class="col-md-2 col-sm-6">
                 <label class="form-label">Sort by</label>
-                <select name="sort" class="form-select form-select-sm">
+                <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="date_desc" {% if sort_key == "date_desc" %}selected{% endif %}>Newest first</option>
                     <option value="date_asc" {% if sort_key == "date_asc" %}selected{% endif %}>Oldest first</option>
                     <option value="due_desc" {% if sort_key == "due_desc" %}selected{% endif %}>Highest due</option>
                     <option value="due_asc" {% if sort_key == "due_asc" %}selected{% endif %}>Lowest due</option>
                 </select>
-            </div>
-            <div class="col-md-12 col-sm-6 text-end">
-                <button type="submit" class="btn btn-sm btn-outline-secondary mt-2 mt-md-0">
-                    <i class="bi bi-funnel"></i>
-                    <span class="ms-1">Apply</span>
-                </button>
             </div>
         </form>
 

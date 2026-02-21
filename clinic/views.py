@@ -240,13 +240,35 @@ def patients_export(request):
 
 def visits_export(request):
     range_key = request.GET.get("range", "today")
-    range_key, start_date, end_date = _get_date_range(range_key)
+    status_filter = request.GET.get("status", "all")
+    sort_key = request.GET.get("sort", "date_desc")
+    query = request.GET.get("q", "").strip()
 
-    visits_qs = (
-        Visit.objects.select_related("patient")
-        .filter(is_deleted=False, visit_date__range=(start_date, end_date))
-        .order_by("visit_date", "id")
-    )
+    visits_qs = Visit.objects.select_related("patient").filter(is_deleted=False)
+
+    if range_key != "all":
+        _, start_date, end_date = _get_date_range(range_key)
+        visits_qs = visits_qs.filter(visit_date__range=(start_date, end_date))
+
+    if status_filter in {Visit.STATUS_PAID, Visit.STATUS_PARTIAL, Visit.STATUS_PENDING}:
+        visits_qs = visits_qs.filter(payment_status=status_filter)
+
+    if query:
+        visits_qs = visits_qs.filter(
+            Q(patient__full_name__icontains=query)
+            | Q(patient__mobile__icontains=query)
+        )
+
+    visits_qs = visits_qs.annotate(due_amount=F("visit_fee") - F("amount_paid"))
+
+    if sort_key == "date_asc":
+        visits_qs = visits_qs.order_by("visit_date", "id")
+    elif sort_key == "due_desc":
+        visits_qs = visits_qs.order_by("-due_amount", "-visit_date", "-id")
+    elif sort_key == "due_asc":
+        visits_qs = visits_qs.order_by("due_amount", "-visit_date", "-id")
+    else:
+        visits_qs = visits_qs.order_by("-visit_date", "-id")
 
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename=\"visits.csv\"'

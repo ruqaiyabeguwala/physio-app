@@ -12,22 +12,15 @@
 
 <div class="card hp-card hp-section hp-fade-up-delayed">
     <div class="card-body">
-        <form method="get" class="row g-2 align-items-end mb-3">
+        <form method="get" class="row g-2 align-items-end mb-3 hp-filters-form">
             <div class="col-sm-6 col-md-3">
                 <label class="form-label">Age of dues</label>
-                <select name="age" class="form-select form-select-sm">
+                <select name="age" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="all" {% if age_key == "all" %}selected{% endif %}>All</option>
                     <option value="7" {% if age_key == "7" %}selected{% endif %}>Older than 7 days</option>
                     <option value="30" {% if age_key == "30" %}selected{% endif %}>Older than 30 days</option>
                     <option value="90" {% if age_key == "90" %}selected{% endif %}>Older than 90 days</option>
                 </select>
-            </div>
-            <div class="col-sm-6 col-md-3">
-                <label class="form-label d-none d-sm-block">&nbsp;</label>
-                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-                    <i class="bi bi-funnel"></i>
-                    <span class="ms-1">Apply</span>
-                </button>
             </div>
             <div class="col-sm-12 col-md-6 text-sm-start text-md-end mt-2 mt-md-0">
                 <a href="{% url 'pending_payments_export' %}?age={{ age_key }}" class="btn btn-sm btn-outline-primary">

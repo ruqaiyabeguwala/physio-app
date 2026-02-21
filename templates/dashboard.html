@@ -9,13 +9,12 @@
     <div></div>
     <div class="d-flex align-items-center gap-2 hp-header-actions">
         <form method="get" class="d-flex align-items-center gap-2 hp-date-filter-form">
-            <select name="range" class="form-select form-select-sm">
+            <select name="range" class="form-select form-select-sm" onchange="this.form.submit()">
                 <option value="today" {% if range_key == "today" %}selected{% endif %}>Today</option>
                 <option value="week" {% if range_key == "week" %}selected{% endif %}>This week</option>
                 <option value="month" {% if range_key == "month" %}selected{% endif %}>This month</option>
                 <option value="year" {% if range_key == "year" %}selected{% endif %}>This year</option>
             </select>
-            <button class="btn btn-sm btn-outline-secondary" type="submit">Apply</button>
         </form>
         <a href="{% url 'visit_create' %}" class="btn btn-sm btn-primary">+ New visit</a>
         <div class="dropdown">
