@@ -1,10 +1,14 @@
 from datetime import date, timedelta
+import csv
 
-from django.db.models import DecimalField, F, Sum
+from django.db.models import DecimalField, F, Sum, Q
 from django.db.models.functions import Coalesce
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django import forms
+
+from .models import Patient, Visit
 
 from .models import Visit
 
@@ -91,20 +95,120 @@ def dashboard(request):
     return render(request, "dashboard.html", context)
 
 
+class PatientForm(forms.ModelForm):
+    class Meta:
+        model = Patient
+        fields = [
+            "full_name",
+            "mobile",
+            "email",
+            "age",
+            "gender",
+            "address",
+            "notes",
+        ]
+        widgets = {
+            "full_name": forms.TextInput(attrs={"class": "form-control"}),
+            "mobile": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "age": forms.NumberInput(attrs={"class": "form-control"}),
+            "gender": forms.TextInput(attrs={"class": "form-control"}),
+            "address": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
+            "notes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+        }
+
+
 def patients_list(request):
-    return HttpResponse("Patients list")
+    query = request.GET.get("q", "").strip()
+    patients = Patient.objects.all().order_by("full_name")
+    if query:
+        patients = patients.filter(Q(full_name__icontains=query) | Q(mobile__icontains=query))
+    context = {
+        "patients": patients,
+        "query": query,
+    }
+    return render(request, "patients/list.html", context)
 
 
 def patient_create(request):
-    return HttpResponse("New patient form")
+    if request.method == "POST":
+        form = PatientForm(request.POST)
+        if form.is_valid():
+            patient = form.save()
+            return redirect("patient_detail", pk=patient.pk)
+    else:
+        form = PatientForm()
+    context = {
+        "form": form,
+        "is_edit": False,
+    }
+    return render(request, "patients/form.html", context)
 
 
 def patient_detail(request, pk):
-    return HttpResponse(f"Patient detail {pk}")
+    patient = get_object_or_404(Patient, pk=pk)
+    visits = patient.visits.filter(is_deleted=False).order_by("-visit_date", "-id")
+    context = {
+        "patient": patient,
+        "visits": visits,
+    }
+    return render(request, "patients/detail.html", context)
 
 
 def patient_edit(request, pk):
-    return HttpResponse(f"Edit patient {pk}")
+    patient = get_object_or_404(Patient, pk=pk)
+    if request.method == "POST":
+        form = PatientForm(request.POST, instance=patient)
+        if form.is_valid():
+            form.save()
+            return redirect("patient_detail", pk=patient.pk)
+    else:
+        form = PatientForm(instance=patient)
+    context = {
+        "form": form,
+        "is_edit": True,
+        "patient": patient,
+    }
+    return render(request, "patients/form.html", context)
+
+
+def patients_export(request):
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="patients.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "Patient ID",
+            "Full name",
+            "Mobile",
+            "Email",
+            "Age",
+            "Gender",
+            "Address",
+            "First visit date",
+            "Last visit date",
+            "Total revenue",
+            "Total pending",
+        ]
+    )
+    for patient in Patient.objects.all().order_by("full_name"):
+        writer.writerow(
+            [
+                patient.pk,
+                patient.full_name,
+                patient.mobile,
+                patient.email,
+                patient.age,
+                patient.gender,
+                patient.address,
+                patient.first_visit_date,
+                patient.last_visit_date,
+                patient.total_revenue,
+                patient.total_pending,
+            ]
+        )
+    return response
 
 
 def visit_create(request):

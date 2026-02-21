@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div>
+        <h1 class="hp-page-title mb-1">{{ patient.full_name }}</h1>
+        <div class="hp-page-subtitle">
+            Patient details
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a href="{% url 'patients_list' %}" class="btn btn-sm btn-outline-secondary">
+            Back to patients
+        </a>
+        <a href="{% url 'patient_edit' patient.pk %}" class="btn btn-sm btn-outline-secondary">
+            Edit patient
+        </a>
+        <a href="{% url 'visit_create' %}?patient={{ patient.pk }}" class="btn btn-sm btn-primary">
+            + Add visit
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 hp-section hp-fade-up-delayed">
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Patient info</div>
+                <div class="mb-1"><strong>Mobile:</strong> {{ patient.mobile }}</div>
+                {% if patient.email %}
+                    <div class="mb-1"><strong>Email:</strong> {{ patient.email }}</div>
+                {% endif %}
+                {% if patient.age %}
+                    <div class="mb-1"><strong>Age:</strong> {{ patient.age }}</div>
+                {% endif %}
+                {% if patient.gender %}
+                    <div class="mb-1"><strong>Gender:</strong> {{ patient.gender }}</div>
+                {% endif %}
+                {% if patient.address %}
+                    <div class="mb-1"><strong>Address:</strong> {{ patient.address }}</div>
+                {% endif %}
+                {% if patient.notes %}
+                    <div class="mb-0"><strong>Notes:</strong> {{ patient.notes }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Summary</div>
+                <div class="mb-1"><strong>First visit:</strong> {{ patient.first_visit_date|default:"-" }}</div>
+                <div class="mb-1"><strong>Last visit:</strong> {{ patient.last_visit_date|default:"-" }}</div>
+                <div class="mb-1">
+                    <strong>Total revenue:</strong>
+                    ₹{{ patient.total_revenue|default:0 }}
+                </div>
+                <div class="mb-1">
+                    <strong>Pending amount:</strong>
+                    {% if patient.total_pending %}
+                        <span class="text-warning">₹{{ patient.total_pending }}</span>
+                    {% else %}
+                        ₹0
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-late">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="hp-section-heading">Visits</div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Symptoms</th>
+                        <th>Status</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if visits %}
+                        {% for visit in visits %}
+                            <tr>
+                                <td>{{ visit.visit_date }}</td>
+                                <td>
+                                    {% if visit.symptoms %}
+                                        {{ visit.symptoms|truncatechars:40 }}
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if visit.payment_status == 'paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif visit.payment_status == 'partial' %}
+                                        <span class="badge bg-warning text-dark">Partial</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">₹{{ visit.visit_fee }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        Open visit
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted small">
+                                No visits for this patient yet.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

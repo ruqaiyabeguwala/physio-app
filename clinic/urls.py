@@ -7,6 +7,7 @@ urlpatterns = [
     path('patients/new/', views.patient_create, name='patient_create'),
     path('patients/<int:pk>/', views.patient_detail, name='patient_detail'),
     path('patients/<int:pk>/edit/', views.patient_edit, name='patient_edit'),
+    path('patients/export/', views.patients_export, name='patients_export'),
     path('visits/new/', views.visit_create, name='visit_create'),
     path('visits/<int:pk>/', views.visit_detail, name='visit_detail'),
     path('visits/<int:pk>/edit/', views.visit_edit, name='visit_edit'),
@@ -17,4 +18,3 @@ urlpatterns = [
     path('pending-payments/', views.pending_payments, name='pending_payments'),
     path('settings/', views.settings_view, name='settings'),
 ]
-

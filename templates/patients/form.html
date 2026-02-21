@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div>
+        <h1 class="hp-page-title mb-1">
+            {% if is_edit %}Edit patient{% else %}New patient{% endif %}
+        </h1>
+        <div class="hp-page-subtitle">
+            {% if is_edit %}Update patient details{% else %}Create a new patient record{% endif %}
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a href="{% url 'patients_list' %}" class="btn btn-sm btn-outline-secondary">
+            Back to patients
+        </a>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-delayed">
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger py-2">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Full name</label>
+                    {{ form.full_name }}
+                    {{ form.full_name.errors }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Mobile</label>
+                    {{ form.mobile }}
+                    {{ form.mobile.errors }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Age</label>
+                    {{ form.age }}
+                    {{ form.age.errors }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Gender</label>
+                    {{ form.gender }}
+                    {{ form.gender.errors }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Address</label>
+                    {{ form.address }}
+                    {{ form.address.errors }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Notes</label>
+                    {{ form.notes }}
+                    {{ form.notes.errors }}
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+                <a href="{% url 'patients_list' %}" class="btn btn-outline-secondary me-2">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    {% if is_edit %}Save changes{% else %}Create patient{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
