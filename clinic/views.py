@@ -238,6 +238,53 @@ def patients_export(request):
     return response
 
 
+def visits_list(request):
+    range_key = request.GET.get("range", "today")
+    status_filter = request.GET.get("status", "all")
+    sort_key = request.GET.get("sort", "date_desc")
+    query = request.GET.get("q", "").strip()
+
+    qs = Visit.objects.select_related("patient").filter(is_deleted=False)
+
+    if range_key != "all":
+        range_key, start_date, end_date = _get_date_range(range_key)
+        qs = qs.filter(visit_date__range=(start_date, end_date))
+    else:
+        _, start_date, end_date = _get_date_range("today")
+
+    if status_filter in {Visit.STATUS_PAID, Visit.STATUS_PARTIAL, Visit.STATUS_PENDING}:
+        qs = qs.filter(payment_status=status_filter)
+
+    if query:
+        qs = qs.filter(
+            Q(patient__full_name__icontains=query)
+            | Q(patient__mobile__icontains=query)
+        )
+
+    qs = qs.annotate(due_amount=F("visit_fee") - F("amount_paid"))
+
+    if sort_key == "date_asc":
+        qs = qs.order_by("visit_date", "id")
+    elif sort_key == "due_desc":
+        qs = qs.order_by("-due_amount", "-visit_date", "-id")
+    elif sort_key == "due_asc":
+        qs = qs.order_by("due_amount", "-visit_date", "-id")
+    else:
+        sort_key = "date_desc"
+        qs = qs.order_by("-visit_date", "-id")
+
+    context = {
+        "visits": qs,
+        "range_key": range_key,
+        "status_filter": status_filter,
+        "sort_key": sort_key,
+        "query": query,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    return render(request, "visits/list.html", context)
+
+
 class VisitForm(forms.ModelForm):
     exercises = forms.ModelMultipleChoiceField(
         queryset=Exercise.objects.all().order_by("name"),
@@ -570,6 +617,16 @@ def visit_clear_due(request, pk):
             visit.save(update_fields=["amount_paid", "payment_status", "payment_date"])
             _update_patient_summary(visit.patient)
     return redirect("patient_detail", pk=visit.patient.pk)
+
+
+def visit_delete(request, pk):
+    visit = get_object_or_404(Visit.objects.select_related("patient"), pk=pk, is_deleted=False)
+    if request.method == "POST":
+        visit.is_deleted = True
+        visit.save(update_fields=["is_deleted"])
+        _update_patient_summary(visit.patient)
+        return redirect("visits_list")
+    return redirect("visit_detail", pk=visit.pk)
 
 
 def visit_edit(request, pk):

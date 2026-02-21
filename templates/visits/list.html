@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div>
+        <h1 class="hp-page-title mb-1">Visits</h1>
+        <div class="hp-page-subtitle">
+            All visits, sorted by date with dues and quick actions.
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a href="{% url 'visit_create' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg"></i>
+            <span class="ms-1 d-none d-sm-inline">New visit</span>
+        </a>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-delayed">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end mb-3">
+            <div class="col-md-4 col-sm-6">
+                <label class="form-label">Search</label>
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ query }}"
+                    class="form-control form-control-sm"
+                    placeholder="Search by patient name or phone"
+                >
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <label class="form-label">Date range</label>
+                <select name="range" class="form-select form-select-sm">
+                    <option value="today" {% if range_key == "today" %}selected{% endif %}>Today</option>
+                    <option value="week" {% if range_key == "week" %}selected{% endif %}>This week</option>
+                    <option value="month" {% if range_key == "month" %}selected{% endif %}>This month</option>
+                    <option value="year" {% if range_key == "year" %}selected{% endif %}>This year</option>
+                    <option value="all" {% if range_key == "all" %}selected{% endif %}>All time</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <label class="form-label">Payment status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
+                    <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Pending</option>
+                    <option value="partial" {% if status_filter == "partial" %}selected{% endif %}>Partial</option>
+                    <option value="paid" {% if status_filter == "paid" %}selected{% endif %}>Paid</option>
+                </select>
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label">Sort by</label>
+                <select name="sort" class="form-select form-select-sm">
+                    <option value="date_desc" {% if sort_key == "date_desc" %}selected{% endif %}>Newest first</option>
+                    <option value="date_asc" {% if sort_key == "date_asc" %}selected{% endif %}>Oldest first</option>
+                    <option value="due_desc" {% if sort_key == "due_desc" %}selected{% endif %}>Highest due</option>
+                    <option value="due_asc" {% if sort_key == "due_asc" %}selected{% endif %}>Lowest due</option>
+                </select>
+            </div>
+            <div class="col-md-12 col-sm-6 text-end">
+                <button type="submit" class="btn btn-sm btn-outline-secondary mt-2 mt-md-0">
+                    <i class="bi bi-funnel"></i>
+                    <span class="ms-1">Apply</span>
+                </button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th class="text-end">Fee</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-end">Due</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if visits %}
+                        {% for visit in visits %}
+                            <tr>
+                                <td>{{ visit.visit_date }}</td>
+                                <td>
+                                    <a href="{% url 'patient_detail' visit.patient.pk %}" class="text-decoration-none">
+                                        {{ visit.patient.full_name }}
+                                    </a>
+                                </td>
+                                <td class="text-end">₹{{ visit.visit_fee }}</td>
+                                <td class="text-end">₹{{ visit.amount_paid }}</td>
+                                <td class="text-end">
+                                    {% if visit.balance > 0 %}
+                                        <span class="text-danger">₹{{ visit.balance }}</span>
+                                    {% else %}
+                                        <span class="text-muted small">₹0</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if visit.payment_status == 'paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif visit.payment_status == 'partial' %}
+                                        <span class="badge bg-warning text-dark">Partial</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary me-1">
+                                        View
+                                    </a>
+                                    <a href="{% url 'visit_edit' visit.pk %}" class="btn btn-sm btn-outline-secondary me-1">
+                                        Edit
+                                    </a>
+                                    {% if visit.balance > 0 %}
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-danger me-1"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#visitListClearDueModal"
+                                            data-url="{% url 'visit_clear_due' visit.pk %}"
+                                            data-amount="{{ visit.balance }}"
+                                        >
+                                            Clear due
+                                        </button>
+                                    {% endif %}
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#visitDeleteModal"
+                                        data-url="{% url 'visit_delete' visit.pk %}"
+                                        data-label="{{ visit.patient.full_name }} on {{ visit.visit_date }}"
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted small">
+                                No visits found for the selected filters.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="visitListClearDueModal" tabindex="-1" aria-labelledby="visitListClearDueLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" id="visitListClearDueForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="visitListClearDueLabel">Clear visit due</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">
+                        Enter the amount to clear for this visit.
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input
+                            type="number"
+                            name="clear_amount"
+                            id="visitListClearDueAmount"
+                            class="form-control text-end"
+                            step="0.01"
+                            min="0"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Clear due</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="visitDeleteModal" tabindex="-1" aria-labelledby="visitDeleteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" id="visitDeleteForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="visitDeleteLabel">Delete visit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">
+                        Are you sure you want to delete this visit?
+                    </p>
+                    <p class="small text-muted mb-0">
+                        <span>Visit for </span>
+                        <strong id="visitDeleteLabelValue"></strong>
+                        <span>. This action will remove it from lists and update patient summaries.</span>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var clearDueModalEl = document.getElementById('visitListClearDueModal');
+    if (clearDueModalEl) {
+        clearDueModalEl.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            if (!button) return;
+            var url = button.getAttribute('data-url');
+            var amount = button.getAttribute('data-amount');
+            var form = document.getElementById('visitListClearDueForm');
+            var amountInput = document.getElementById('visitListClearDueAmount');
+            if (form && url) {
+                form.action = url;
+            }
+            if (amountInput) {
+                amountInput.value = amount || '';
+            }
+        });
+    }
+
+    var deleteModalEl = document.getElementById('visitDeleteModal');
+    if (!deleteModalEl) return;
+    deleteModalEl.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        if (!button) return;
+        var url = button.getAttribute('data-url');
+        var label = button.getAttribute('data-label');
+        var form = document.getElementById('visitDeleteForm');
+        var labelSpan = document.getElementById('visitDeleteLabelValue');
+        if (form && url) {
+            form.action = url;
+        }
+        if (labelSpan) {
+            labelSpan.textContent = label || '';
+        }
+    });
+});
+</script>
+
+{% endblock %}
