@@ -2,21 +2,22 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
-    <div>
-        <h1 class="hp-page-title mb-1">{{ patient.full_name }}</h1>
-        <div class="hp-page-subtitle">
-            Patient details
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'patients_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+            <!-- <span class="ms-1 d-none d-sm-inline"></span> -->
+        </a>
+        <div>
+            <h1 class="hp-page-title mb-1">{{ patient.full_name }}</h1>
+            <div class="hp-page-subtitle">
+                Patient details
+            </div>
         </div>
     </div>
     <div class="d-flex align-items-center gap-2 hp-header-actions">
-        <a href="{% url 'patients_list' %}" class="btn btn-sm btn-outline-secondary">
-            Back to patients
-        </a>
-        <a href="{% url 'patient_edit' patient.pk %}" class="btn btn-sm btn-outline-secondary">
-            Edit patient
-        </a>
         <a href="{% url 'visit_create' %}?patient={{ patient.pk }}" class="btn btn-sm btn-primary">
-            + Add visit
+            <i class="bi bi-plus-lg"></i>
+            <span class="ms-1 d-none d-sm-inline">Add visit</span>
         </a>
     </div>
 </div>
@@ -25,7 +26,12 @@
     <div class="col-md-6">
         <div class="hp-card h-100">
             <div class="card-body">
-                <div class="hp-section-heading mb-2">Patient info</div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="hp-section-heading mb-0">Patient info</div>
+                    <a href="{% url 'patient_edit' patient.pk %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                </div>
                 <div class="mb-1"><strong>Mobile:</strong> {{ patient.mobile }}</div>
                 {% if patient.email %}
                     <div class="mb-1"><strong>Email:</strong> {{ patient.email }}</div>
@@ -71,7 +77,11 @@
 <div class="card hp-card hp-section hp-fade-up-late">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="hp-section-heading">Visits</div>
+            <div class="hp-section-heading mb-0">Visits</div>
+            <a href="{% url 'visit_create' %}?patient={{ patient.pk }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-plus-lg"></i>
+                <span class="ms-1 d-none d-sm-inline">Add visit</span>
+            </a>
         </div>
         <div class="table-responsive">
             <table class="table table-sm align-middle">
@@ -80,7 +90,8 @@
                         <th>Date</th>
                         <th>Symptoms</th>
                         <th>Status</th>
-                        <th class="text-end">Amount</th>
+                        <th class="text-end">Amount paid</th>
+                        <th class="text-end">Amount due</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -105,17 +116,20 @@
                                         <span class="badge bg-danger">Pending</span>
                                     {% endif %}
                                 </td>
-                                <td class="text-end">₹{{ visit.visit_fee }}</td>
+                                <td class="text-end">₹{{ visit.amount_paid }}</td>
+                                <td class="text-end {% if visit.balance == 0 %}text-success{% else %}text-warning{% endif %}">
+{% if visit.balance != 0 %}₹{% endif %}{{ visit.balance|default:"-" }}
+                                </td>
                                 <td class="text-end">
                                     <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary">
-                                        Open visit
+                                        <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
                                 </td>
                             </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted small">
+                            <td colspan="6" class="text-center text-muted small">
                                 No visits for this patient yet.
                             </td>
                         </tr>
@@ -126,4 +140,3 @@
     </div>
 </div>
 {% endblock %}
-

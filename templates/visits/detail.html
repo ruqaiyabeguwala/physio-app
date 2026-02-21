@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'patient_detail' visit.patient.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+            <!-- <span class="ms-1 d-none d-sm-inline">Back</span> -->
+        </a>
+        <div>
+            <h1 class="hp-page-title mb-1">
+                Visit {{ visit.id }}
+            </h1>
+            <div class="hp-page-subtitle">
+                {{ visit.patient.full_name }} · {{ visit.visit_date }}
+            </div>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 hp-header-actions">
+        <a href="{% url 'patients_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-people"></i>
+            <span class="ms-1 d-none d-sm-inline">Patients</span>
+        </a>
+        <a href="{% url 'visit_edit' visit.pk %}" class="btn btn-sm btn-outline-secondary">
+            Edit
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 hp-section hp-fade-up-delayed">
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Visit info</div>
+                <div class="mb-1"><strong>Date:</strong> {{ visit.visit_date }}</div>
+                <div class="mb-1"><strong>Patient:</strong> {{ visit.patient.full_name }}</div>
+                {% if visit.appointment %}
+                    <div class="mb-1"><strong>From appointment:</strong> {{ visit.appointment.scheduled_date }}</div>
+                {% endif %}
+                {% if visit.next_appointment_date %}
+                    <div class="mb-1"><strong>Next appointment:</strong> {{ visit.next_appointment_date }}</div>
+                {% endif %}
+                {% if visit.notes %}
+                    <div class="mb-0"><strong>Notes:</strong> {{ visit.notes }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Payment</div>
+                <div class="mb-1">
+                    <strong>Fee:</strong> ₹{{ visit.visit_fee }}
+                </div>
+                <div class="mb-1">
+                    <strong>Paid:</strong> ₹{{ visit.amount_paid }}
+                </div>
+                <div class="mb-1">
+                    <strong>Status:</strong>
+                    {% if visit.payment_status == 'paid' %}
+                        <span class="badge bg-success">Paid</span>
+                    {% elif visit.payment_status == 'partial' %}
+                        <span class="badge bg-warning text-dark">Partial</span>
+                    {% else %}
+                        <span class="badge bg-danger">Pending</span>
+                    {% endif %}
+                </div>
+                {% if visit.payment_method %}
+                    <div class="mb-1">
+                        <strong>Method:</strong> {{ visit.get_payment_method_display }}
+                    </div>
+                {% endif %}
+                {% if visit.payment_date %}
+                    <div class="mb-1">
+                        <strong>Payment date:</strong> {{ visit.payment_date }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 hp-section hp-fade-up-late">
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Symptoms / complaints</div>
+                {% if visit.symptoms %}
+                    <div>{{ visit.symptoms|linebreaksbr }}</div>
+                {% else %}
+                    <div class="text-muted small">No symptoms recorded.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="hp-card h-100">
+            <div class="card-body">
+                <div class="hp-section-heading mb-2">Treatment / therapy</div>
+                {% if visit.treatment %}
+                    <div>{{ visit.treatment|linebreaksbr }}</div>
+                {% else %}
+                    <div class="text-muted small">No treatment notes recorded.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-late">
+    <div class="card-body">
+        <div class="hp-section-heading mb-2">Exercises</div>
+        {% if exercises %}
+            <ul class="mb-0">
+                {% for ve in exercises %}
+                    <li>{{ ve.exercise.name }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted small">No exercises attached to this visit.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if whatsapp_url %}
+<div class="d-flex justify-content-end hp-section hp-fade-up-late">
+    <button
+        class="btn btn-success btn-lg"
+        type="button"
+        data-bs-toggle="modal"
+        data-bs-target="#whatsappModal"
+    >
+        <i class="bi bi-whatsapp"></i>
+        <span class="ms-1">Generate Whatsapp Receipt</span>
+    </button>
+</div>
+
+<div class="modal fade" id="whatsappModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">WhatsApp receipt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">
+                    This is the visit receipt that will be sent via WhatsApp. You can copy or adjust it if needed.
+                </p>
+                <textarea class="form-control" rows="6" readonly>{{ message_text }}</textarea>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ whatsapp_url }}" target="_blank" class="btn btn-success">
+                    Open in WhatsApp
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -257,13 +257,13 @@ Assistant actions:
     - Shows banner with pending dues from previous visits if any.
     - Saves new visit and updates patient summary fields.
   - `visit_detail`:
-    - Shows visit data, payment info, exercises, and “Generate WhatsApp message”.
+    - Shows visit data, payment info, exercises, and a “Generate Whatsapp Receipt” action.
   - `visit_edit`:
     - Allows editing visit fields.
 - Implement WhatsApp:
   - In `visit_detail` template, add:
-    - Button to open modal with generated message.
-    - Button that creates `wa.me` link using patient mobile and prefilled text.
+    - Bottom-of-page primary button “Generate Whatsapp Receipt” that opens a modal with the prefilled receipt text.
+    - Button inside the modal that creates a `wa.me` link using patient mobile and prefilled text.
 - Create templates:
   - `templates/visits/form.html`
   - `templates/visits/detail.html`

@@ -17,10 +17,12 @@
             >
         </form>
         <a href="{% url 'patients_export' %}" class="btn btn-sm btn-outline-secondary">
-            Export CSV
+            <i class="bi bi-download"></i>
+            <span class="ms-1 d-none d-sm-inline">Export CSV</span>
         </a>
         <a href="{% url 'patient_create' %}" class="btn btn-sm btn-primary">
-            + New patient
+            <i class="bi bi-person-plus"></i>
+            <span class="ms-1 d-none d-sm-inline">New patient</span>
         </a>
     </div>
 </div>
@@ -64,7 +66,7 @@
                                 </td>
                                 <td class="text-end">
                                     <a href="{% url 'patient_detail' patient.pk %}" class="btn btn-sm btn-outline-secondary">
-                                        Open
+                                        <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
                                 </td>
                             </tr>
@@ -82,4 +84,3 @@
     </div>
 </div>
 {% endblock %}
-

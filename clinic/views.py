@@ -1,5 +1,8 @@
-from datetime import date, timedelta
 import csv
+from decimal import Decimal
+from urllib.parse import quote
+from datetime import date, timedelta
+import re
 
 from django.db.models import DecimalField, F, Sum, Q
 from django.db.models.functions import Coalesce
@@ -8,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django import forms
 
-from .models import Patient, Visit
+from .models import Appointment, ClinicSettings, Patient, Visit, VisitExercise
 
 from .models import Visit
 
@@ -211,16 +214,212 @@ def patients_export(request):
     return response
 
 
+class VisitForm(forms.ModelForm):
+    class Meta:
+        model = Visit
+        fields = [
+            "visit_date",
+            "symptoms",
+            "treatment",
+            "visit_fee",
+            "amount_paid",
+            "payment_method",
+            "payment_date",
+            "notes",
+            "next_appointment_date",
+        ]
+        widgets = {
+            "visit_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "symptoms": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "treatment": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "visit_fee": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "amount_paid": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "payment_method": forms.Select(attrs={"class": "form-select"}),
+            "payment_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "notes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "next_appointment_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+        }
+
+
+def _update_patient_summary(patient: Patient):
+    visits = patient.visits.filter(is_deleted=False).order_by("visit_date", "id")
+    if visits.exists():
+        first = visits.first()
+        last = visits.last()
+        patient.first_visit_date = first.visit_date
+        patient.last_visit_date = last.visit_date
+        totals = visits.aggregate(
+            total_revenue=Coalesce(
+                Sum("amount_paid", output_field=DecimalField(max_digits=10, decimal_places=2)),
+                0,
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            ),
+            total_pending=Coalesce(
+                Sum(
+                    F("visit_fee") - F("amount_paid"),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+                0,
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            ),
+        )
+        patient.total_revenue = totals["total_revenue"]
+        patient.total_pending = totals["total_pending"]
+    else:
+        patient.first_visit_date = None
+        patient.last_visit_date = None
+        patient.total_revenue = Decimal("0.00")
+        patient.total_pending = Decimal("0.00")
+    patient.save(update_fields=["first_visit_date", "last_visit_date", "total_revenue", "total_pending"])
+
+
+def _set_payment_status(visit: Visit):
+    fee = visit.visit_fee or Decimal("0.00")
+    paid = visit.amount_paid or Decimal("0.00")
+    if paid >= fee and fee > 0:
+        visit.payment_status = Visit.STATUS_PAID
+    elif paid > 0:
+        visit.payment_status = Visit.STATUS_PARTIAL
+    else:
+        visit.payment_status = Visit.STATUS_PENDING
+
+
+def _format_whatsapp_number(raw: str):
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", raw)
+    if not digits:
+        return None
+    if len(digits) == 10:
+        digits = "91" + digits
+    if len(digits) < 10:
+        return None
+    return digits
+
+
 def visit_create(request):
-    return HttpResponse("New visit form")
+    patient = None
+    appointment = None
+    patient_id = request.GET.get("patient")
+    appointment_id = request.GET.get("appointment")
+    if appointment_id:
+        appointment = get_object_or_404(Appointment, pk=appointment_id)
+        patient = appointment.patient
+    elif patient_id:
+        patient = get_object_or_404(Patient, pk=patient_id)
+
+    today = timezone.localdate()
+
+    previous_unpaid = None
+    if patient:
+        previous_unpaid = (
+            patient.visits.filter(is_deleted=False)
+            .exclude(payment_status=Visit.STATUS_PAID)
+            .order_by("visit_date", "id")
+        )
+
+    if request.method == "POST":
+        form = VisitForm(request.POST)
+        if form.is_valid():
+            visit = form.save(commit=False)
+            if not patient:
+                patient = get_object_or_404(Patient, pk=request.POST.get("patient_id"))
+            visit.patient = patient
+            if appointment:
+                visit.appointment = appointment
+            _set_payment_status(visit)
+            visit.save()
+            _update_patient_summary(patient)
+            if appointment:
+                appointment.status = Appointment.STATUS_COMPLETED
+                appointment.save(update_fields=["status"])
+            return redirect("visit_detail", pk=visit.pk)
+    else:
+        initial = {
+            "visit_date": today,
+            "payment_date": today,
+        }
+        form = VisitForm(initial=initial)
+
+    context = {
+        "form": form,
+        "patient": patient,
+        "appointment": appointment,
+        "previous_unpaid": previous_unpaid,
+        "today": today,
+    }
+    return render(request, "visits/form.html", context)
 
 
 def visit_detail(request, pk):
-    return HttpResponse(f"Visit detail {pk}")
+    visit = get_object_or_404(Visit.objects.select_related("patient", "appointment"), pk=pk, is_deleted=False)
+    exercises = VisitExercise.objects.select_related("exercise").filter(visit=visit)
+    clinic_name = "Hussain Physio"
+    try:
+        settings = ClinicSettings.objects.first()
+        if settings and settings.clinic_name:
+            clinic_name = settings.clinic_name
+    except ClinicSettings.DoesNotExist:
+        pass
+
+    parts = [
+        f"Visit summary for {visit.patient.full_name} at {clinic_name}",
+        f"Date: {visit.visit_date}",
+        f"Amount: ₹{visit.visit_fee} (Paid: ₹{visit.amount_paid}, Status: {visit.get_payment_status_display()})",
+    ]
+    if visit.symptoms:
+        parts.append(f"Symptoms: {visit.symptoms}")
+    if visit.treatment:
+        parts.append(f"Treatment: {visit.treatment}")
+    if exercises:
+        exercise_names = ", ".join(e.exercise.name for e in exercises)
+        parts.append(f"Exercises: {exercise_names}")
+    message_text = "\n".join(parts)
+    whatsapp_url = ""
+    if visit.patient.mobile:
+        phone = _format_whatsapp_number(visit.patient.mobile)
+        if phone:
+            whatsapp_url = f"https://wa.me/{phone}?text={quote(message_text)}"
+
+    context = {
+        "visit": visit,
+        "exercises": exercises,
+        "message_text": message_text,
+        "whatsapp_url": whatsapp_url,
+    }
+    return render(request, "visits/detail.html", context)
 
 
 def visit_edit(request, pk):
-    return HttpResponse(f"Edit visit {pk}")
+    visit = get_object_or_404(Visit, pk=pk, is_deleted=False)
+    patient = visit.patient
+    if request.method == "POST":
+        form = VisitForm(request.POST, instance=visit)
+        if form.is_valid():
+            visit = form.save(commit=False)
+            _set_payment_status(visit)
+            visit.save()
+            _update_patient_summary(patient)
+            return redirect("visit_detail", pk=visit.pk)
+    else:
+        form = VisitForm(instance=visit)
+
+    previous_unpaid = (
+        patient.visits.filter(is_deleted=False)
+        .exclude(payment_status=Visit.STATUS_PAID)
+        .exclude(pk=visit.pk)
+        .order_by("visit_date", "id")
+    )
+
+    context = {
+        "form": form,
+        "patient": patient,
+        "appointment": visit.appointment,
+        "previous_unpaid": previous_unpaid,
+        "today": timezone.localdate(),
+        "visit": visit,
+    }
+    return render(request, "visits/form.html", context)
 
 
 def appointments_list(request):

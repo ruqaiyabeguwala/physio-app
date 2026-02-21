@@ -49,13 +49,13 @@ Typography
   - Prefer Inter or Roboto; otherwise use system UI font stack.
 - Font sizes:
   - Page title: 20–24 px.
-  - Section/card title: 16–18 px.
+  - Section/card title: 16–18 px, slightly larger and bolder than body text.
   - Body text: 14–16 px.
   - Table text and form labels: 13–14 px.
   - Small helper text: 12–13 px.
 - Font weights:
   - Normal/regular for most content.
-  - Semibold for headings, card titles, table headers, and key numbers.
+  - Semibold/bold for headings, card titles, table headers, and key numbers.
 - Alignment:
   - Left-align text by default.
   - Right-align numeric columns in tables (amounts, counts).
@@ -88,8 +88,8 @@ Cards
   - Very subtle border and soft shadow to separate from background.
 - Content structure:
   - Title row:
-    - Left: card title.
-    - Right: optional small controls (filters, actions).
+    - Left: card title in a slightly larger, bold blue style.
+    - Right: optional small controls (filters, actions) such as "Edit patient" or "Edit visit" aligned with the related table or data.
   - Body:
     - Key number or chart at the top.
     - Supporting text or table below.
@@ -117,12 +117,22 @@ Buttons and Links
 - Sizes:
   - Default: medium size (~36–40 px height).
   - Small: for table actions and header controls.
+- Icons:
+  - Use Bootstrap Icons for common actions:
+    - Back: `bi-arrow-left`.
+    - Edit: `bi-pencil`.
+    - New/add: `bi-plus-lg`, `bi-person-plus`.
+    - Export/download: `bi-download`.
+    - Open in detail: `bi-box-arrow-up-right`.
+    - WhatsApp: `bi-whatsapp`.
+  - Pair icons with short labels, and hide labels on very small screens when needed.
 - Text:
-  - Use concise, action-based labels:
-    - "New visit", "New patient", "Export CSV", "Complete", "Edit", "Open visit".
+  - Use concise, action-based labels next to icons:
+    - "New visit", "New patient", "Export CSV", "Complete", "Edit", "Open visit", "Generate Whatsapp Receipt".
 - Links:
   - Use primary color for inline links.
   - Underline on hover for clarity.
+  - For detail and form pages, provide a pill-shaped icon-backed "Back to …" button on the left side of the header to return to the parent list or record.
 
 Forms
 -----
@@ -232,7 +242,13 @@ Page Types and Consistency
   - Use:
     - A summary area at the top in one or more cards.
     - Tabs or sections for related lists (e.g. visits for a patient).
-    - Clear primary actions (e.g. "+ Add visit", "Edit").
+    - A left-aligned back button in the header ("Back to patients" or "Back to patient").
+    - Section titles styled consistently using `hp-section-heading` (larger, bold, blue).
+    - Contextual actions aligned with the data they control:
+      - "Edit patient" in the same row as the patient visits table header.
+      - "Edit visit" in the same row as the visit payment section header.
+    - A prominent bottom-of-page primary action where needed:
+      - On Visit detail, a highlighted "Generate Whatsapp Receipt" button aligned to the bottom right.
 - Form pages (New patient, New visit, New appointment):
   - Keep center-aligned, single-column forms.
   - Use grouped sections with headings and adequate spacing.
