@@ -150,3 +150,45 @@ class PatientAndVisitViewTests(TestCase):
         self.assertEqual(visit.patient, patient)
         self.assertEqual(visit.visit_fee, Decimal("600.00"))
         self.assertEqual(visit.amount_paid, Decimal("400.00"))
+
+    def test_patient_delete_without_visits_succeeds(self):
+        self.client.post(
+            reverse("simple_login"),
+            {
+                "username": settings.SIMPLE_LOGIN_USERNAME,
+                "password": settings.SIMPLE_LOGIN_PASSWORD,
+            },
+        )
+
+        patient = Patient.objects.create(full_name="No Visits Patient", mobile="5554443333")
+        self.assertEqual(Patient.objects.count(), 1)
+
+        response = self.client.post(reverse("patient_delete", args=[patient.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("patients_list"))
+        self.assertEqual(Patient.objects.count(), 0)
+
+    def test_patient_delete_with_visits_shows_error_and_keeps_patient(self):
+        self.client.post(
+            reverse("simple_login"),
+            {
+                "username": settings.SIMPLE_LOGIN_USERNAME,
+                "password": settings.SIMPLE_LOGIN_PASSWORD,
+            },
+        )
+
+        patient = Patient.objects.create(full_name="With Visits Patient", mobile="2223334444")
+        Visit.objects.create(
+            patient=patient,
+            visit_date=date.today(),
+            visit_fee=Decimal("200.00"),
+            amount_paid=Decimal("0.00"),
+        )
+        self.assertEqual(Patient.objects.count(), 1)
+        self.assertEqual(Visit.objects.count(), 1)
+
+        response = self.client.post(reverse("patient_delete", args=[patient.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("patients_list"))
+        self.assertEqual(Patient.objects.count(), 1)
+        self.assertEqual(Visit.objects.count(), 1)

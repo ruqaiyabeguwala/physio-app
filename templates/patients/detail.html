@@ -117,25 +117,26 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">₹{{ visit.amount_paid }}</td>
-                                <td class="text-end {% if visit.balance == 0 %}text-success{% else %}text-warning{% endif %}">
-{% if visit.balance != 0 %}₹{% endif %}{{ visit.balance|default:"-" }}
-                                </td>
                                 <td class="text-end">
-                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-box-arrow-up-right"></i>
-                                    </a>
-                                    {% if visit.payment_status != 'paid' and visit.balance %}
+                                    {% if visit.balance > 0 %}
                                         <button
                                             type="button"
-                                            class="btn btn-sm btn-link text-danger p-0 ms-2"
+                                            class="btn btn-link p-0 text-danger text-decoration-none"
                                             data-bs-toggle="modal"
                                             data-bs-target="#visitClearDueModal"
                                             data-url="{% url 'visit_clear_due' visit.pk %}"
                                             data-amount="{{ visit.balance }}"
                                         >
-                                            Clear due
+                                            ₹{{ visit.balance }}
                                         </button>
+                                    {% else %}
+                                        <span class="text-muted small">₹0</span>
                                     {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary" title="Open visit">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
                                 </td>
                             </tr>
                         {% endfor %}

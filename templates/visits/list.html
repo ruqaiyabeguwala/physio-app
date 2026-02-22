@@ -93,7 +93,16 @@
                                 <td class="text-end">₹{{ visit.amount_paid }}</td>
                                 <td class="text-end">
                                     {% if visit.balance > 0 %}
-                                        <span class="text-danger">₹{{ visit.balance }}</span>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#visitListClearDueModal"
+                                            data-url="{% url 'visit_clear_due' visit.pk %}"
+                                            data-amount="{{ visit.balance }}"
+                                        >
+                                            <i class="bi bi-currency-rupee"></i>{{ visit.balance }}
+                                        </button>
                                     {% else %}
                                         <span class="text-muted small">₹0</span>
                                     {% endif %}
@@ -108,33 +117,21 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
-                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary me-1">
-                                        View
+                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-primary me-1" title="View visit">
+                                        <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
-                                    <a href="{% url 'visit_edit' visit.pk %}" class="btn btn-sm btn-outline-secondary me-1">
-                                        Edit
+                                    <a href="{% url 'visit_edit' visit.pk %}" class="btn btn-sm btn-outline-warning me-1" title="Edit visit">
+                                        <i class="bi bi-pencil-square"></i>
                                     </a>
-                                    {% if visit.balance > 0 %}
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-outline-danger me-1"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#visitListClearDueModal"
-                                            data-url="{% url 'visit_clear_due' visit.pk %}"
-                                            data-amount="{{ visit.balance }}"
-                                        >
-                                            Clear due
-                                        </button>
-                                    {% endif %}
                                     <button
                                         type="button"
-                                        class="btn btn-sm btn-outline-secondary"
+                                        class="btn btn-sm btn-outline-danger"
                                         data-bs-toggle="modal"
                                         data-bs-target="#visitDeleteModal"
                                         data-url="{% url 'visit_delete' visit.pk %}"
                                         data-label="{{ visit.patient.full_name }} on {{ visit.visit_date }}"
                                     >
-                                        Delete
+                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </td>
                             </tr>

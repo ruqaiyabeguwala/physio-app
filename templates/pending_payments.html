@@ -67,7 +67,16 @@
                                 <td class="text-end">₹{{ visit.visit_fee }}</td>
                                 <td class="text-end">₹{{ visit.amount_paid }}</td>
                                 <td class="text-end">
-                                    <span class="text-danger">₹{{ visit.balance }}</span>
+                                    <button
+                                        type="button"
+                                        class="btn btn-link p-0 text-danger text-decoration-none"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#pendingClearDueModal"
+                                        data-url="{% url 'visit_clear_due' visit.pk %}"
+                                        data-amount="{{ visit.balance }}"
+                                    >
+                                        ₹{{ visit.balance }}
+                                    </button>
                                 </td>
                                 <td>
                                     {% if visit.payment_status == 'partial' %}
@@ -77,19 +86,9 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
-                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary me-1">
-                                        View
+                                    <a href="{% url 'visit_detail' visit.pk %}" class="btn btn-sm btn-outline-secondary" title="View visit">
+                                        <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-outline-danger"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#pendingClearDueModal"
-                                        data-url="{% url 'visit_clear_due' visit.pk %}"
-                                        data-amount="{{ visit.balance }}"
-                                    >
-                                        Clear due
-                                    </button>
                                 </td>
                             </tr>
                         {% endfor %}

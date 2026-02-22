@@ -94,6 +94,26 @@
             {% endif %}
 
             <div class="row g-3">
+                {% if not patient and patients_for_select %}
+                    <div class="col-12">
+                        <label class="form-label">Patient</label>
+                        <input
+                            type="search"
+                            id="patient-search-input"
+                            class="form-control mb-2"
+                            placeholder="Search by name or mobile"
+                            autocomplete="off"
+                        >
+                        <select name="patient_id" id="patient-select" class="form-select" required>
+                            <option value="">Select patient</option>
+                            {% for p in patients_for_select %}
+                                <option value="{{ p.pk }}"{% if selected_patient_id and selected_patient_id|add:0 == p.pk %} selected{% endif %}>
+                                    {{ p.full_name }} ({{ p.mobile }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
                 <div class="col-md-4">
                     <label class="form-label">Visit date</label>
                     {{ form.visit_date }}
@@ -265,6 +285,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var patientSearchInput = document.getElementById('patient-search-input');
+    var patientSelect = document.getElementById('patient-select');
+    if (patientSearchInput && patientSelect) {
+        patientSearchInput.addEventListener('input', function () {
+            var query = patientSearchInput.value.toLowerCase();
+            Array.prototype.forEach.call(patientSelect.options, function (opt) {
+                if (!opt.value) {
+                    opt.hidden = false;
+                    return;
+                }
+                var text = opt.text.toLowerCase();
+                opt.hidden = text.indexOf(query) === -1;
+            });
+        });
+    }
+
     var selectEl = document.getElementById('id_exercises');
     var inputEl = document.getElementById('exercise-search-input');
     var chipsEl = document.getElementById('exercise-chips');

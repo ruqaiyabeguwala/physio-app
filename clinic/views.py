@@ -3,6 +3,7 @@ import os
 from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
 from datetime import date, timedelta
+import calendar
 import re
 
 from django.db.models import DecimalField, F, Sum, Q
@@ -12,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django import forms
+from django.contrib import messages
 
 from django.conf import settings
 
@@ -28,14 +30,16 @@ except ImportError:
 def _get_date_range(range_key: str):
     today = timezone.localdate()
     if range_key == "week":
-        start = today - timedelta(days=6)
-        end = today
+        weekday = today.weekday()
+        start = today - timedelta(days=weekday)
+        end = start + timedelta(days=6)
     elif range_key == "month":
         start = today.replace(day=1)
-        end = today
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        end = date(today.year, today.month, last_day)
     elif range_key == "year":
         start = date(today.year, 1, 1)
-        end = today
+        end = date(today.year, 12, 31)
     else:
         range_key = "today"
         start = today
@@ -173,12 +177,55 @@ class PatientForm(forms.ModelForm):
 
 def patients_list(request):
     query = request.GET.get("q", "").strip()
-    patients = Patient.objects.all().order_by("full_name")
+    due_filter = request.GET.get("due", "all")
+    visits_filter = request.GET.get("visits", "all")
+    sort_key = request.GET.get("sort", "name_asc")
+
+    patients = Patient.objects.all()
+
+    if due_filter == "with":
+        patients = patients.filter(total_pending__gt=0)
+    elif due_filter == "without":
+        patients = patients.filter(Q(total_pending__lte=0) | Q(total_pending__isnull=True))
+
+    if visits_filter == "with":
+        patients = patients.filter(last_visit_date__isnull=False)
+    elif visits_filter == "without":
+        patients = patients.filter(last_visit_date__isnull=True)
+
     if query:
         patients = patients.filter(Q(full_name__icontains=query) | Q(mobile__icontains=query))
+
+    if sort_key == "revenue_desc":
+        patients = patients.order_by("-total_revenue", "full_name")
+    elif sort_key == "due_desc":
+        patients = patients.order_by("-total_pending", "full_name")
+    elif sort_key == "last_visit_desc":
+        patients = patients.order_by("-last_visit_date", "full_name")
+    elif sort_key == "name_desc":
+        patients = patients.order_by("-full_name")
+    else:
+        sort_key = "name_asc"
+        patients = patients.order_by("full_name")
+
+    patients_with_links = []
+    for p in patients:
+        phone = _format_whatsapp_number(p.mobile)
+        whatsapp_url = ""
+        if phone:
+            whatsapp_url = f"https://wa.me/{phone}"
+        patients_with_links.append(
+            {
+                "obj": p,
+                "whatsapp_url": whatsapp_url,
+            }
+        )
     context = {
-        "patients": patients,
+        "patients": patients_with_links,
         "query": query,
+        "due_filter": due_filter,
+        "visits_filter": visits_filter,
+        "sort_key": sort_key,
     }
     return render(request, "patients/list.html", context)
 
@@ -223,6 +270,36 @@ def patient_edit(request, pk):
         "patient": patient,
     }
     return render(request, "patients/form.html", context)
+
+
+def patients_suggest(request):
+    query = request.GET.get("q", "").strip()
+    results = []
+    if query:
+        qs = Patient.objects.all().order_by("full_name")
+        qs = qs.filter(Q(full_name__icontains=query) | Q(mobile__icontains=query))[:10]
+        for p in qs:
+            results.append(
+                {
+                    "id": p.pk,
+                    "name": p.full_name,
+                    "mobile": p.mobile,
+                }
+            )
+    return JsonResponse({"results": results})
+
+
+def patient_delete(request, pk):
+    patient = get_object_or_404(Patient, pk=pk)
+    if request.method == "POST":
+        has_visits = patient.visits.filter(is_deleted=False).exists()
+        if has_visits:
+            messages.error(request, "Cannot delete patient with existing visits.")
+            return redirect("patients_list")
+        patient.delete()
+        messages.success(request, "Patient deleted.")
+        return redirect("patients_list")
+    return redirect("patients_list")
 
 
 def patients_export(request):
@@ -611,11 +688,19 @@ def visit_create(request):
         form = VisitForm(initial={"visit_date": today, "payment_date": today})
     elif request.method == "POST":
         form = VisitForm(request.POST)
+        selected_patient = patient
+        if not selected_patient:
+            patient_id = request.POST.get("patient_id")
+            if not patient_id:
+                form.add_error(None, "Please select a patient.")
+            else:
+                try:
+                    selected_patient = Patient.objects.get(pk=patient_id)
+                except Patient.DoesNotExist:
+                    form.add_error(None, "Please select a valid patient.")
         if form.is_valid():
             visit = form.save(commit=False)
-            if not patient:
-                patient = get_object_or_404(Patient, pk=request.POST.get("patient_id"))
-            visit.patient = patient
+            visit.patient = selected_patient
             if appointment:
                 visit.appointment = appointment
             _set_payment_status(visit)
@@ -628,7 +713,7 @@ def visit_create(request):
                     [VisitExercise(visit=visit, exercise=ex) for ex in exercises_selected]
                 )
 
-            _update_patient_summary(patient)
+            _update_patient_summary(selected_patient)
             if appointment:
                 appointment.status = Appointment.STATUS_COMPLETED
                 appointment.save(update_fields=["status"])
@@ -640,6 +725,12 @@ def visit_create(request):
         }
         form = VisitForm(initial=initial)
 
+    patients_for_select = None
+    selected_patient_id = None
+    if not patient:
+        patients_for_select = Patient.objects.all().order_by("full_name")
+        selected_patient_id = request.POST.get("patient_id") if request.method == "POST" else None
+
     context = {
         "form": form,
         "patient": patient,
@@ -647,6 +738,8 @@ def visit_create(request):
         "previous_unpaid": previous_unpaid,
         "previous_unpaid_total": previous_unpaid_total,
         "today": today,
+        "patients_for_select": patients_for_select,
+        "selected_patient_id": selected_patient_id,
     }
     return render(request, "visits/form.html", context)
 
@@ -958,6 +1051,30 @@ def exercise_create(request):
 def exercise_detail(request, pk):
     exercise = get_object_or_404(Exercise, pk=pk)
     return render(request, "exercises/detail.html", {"exercise": exercise})
+
+
+def exercise_edit(request, pk):
+    exercise = get_object_or_404(Exercise, pk=pk)
+    if request.method == "POST":
+        form = ExerciseForm(request.POST, instance=exercise)
+        if form.is_valid():
+            form.save()
+            return redirect("exercises_list")
+    else:
+        form = ExerciseForm(instance=exercise)
+    context = {
+        "form": form,
+    }
+    return render(request, "exercises/form.html", context)
+
+
+def exercise_delete(request, pk):
+    exercise = get_object_or_404(Exercise, pk=pk)
+    if request.method == "POST":
+        exercise.delete()
+        messages.success(request, "Exercise deleted.")
+        return redirect("exercises_list")
+    return redirect("exercises_list")
 
 
 def pending_payments(request):

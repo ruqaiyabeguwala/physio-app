@@ -1,0 +1,19 @@
+name: Deploy Django App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: SSH Deploy
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VM_HOST }}
+        username: ${{ secrets.VM_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          bash ~/deploy.sh
