@@ -13,9 +13,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django import forms
 
-from .models import Appointment, ClinicSettings, Exercise, Patient, Visit, VisitExercise
+from django.conf import settings
 
-from .models import Visit
+from .models import Appointment, ClinicSettings, Exercise, Patient, Visit, VisitExercise
 
 try:
     from google.oauth2 import service_account
@@ -41,6 +41,32 @@ def _get_date_range(range_key: str):
         start = today
         end = today
     return range_key, start, end
+
+
+def simple_login(request):
+    error = ""
+    next_url = request.GET.get("next") or reverse("dashboard")
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "").strip()
+        if (
+            username == settings.SIMPLE_LOGIN_USERNAME
+            and password == settings.SIMPLE_LOGIN_PASSWORD
+        ):
+            request.session["simple_logged_in"] = True
+            request.session.set_expiry(12 * 60 * 60)
+            return redirect(next_url)
+        error = "Invalid username or password."
+    context = {
+        "error": error,
+        "next": next_url,
+    }
+    return render(request, "login.html", context)
+
+
+def simple_logout(request):
+    request.session.flush()
+    return redirect("simple_login")
 
 
 def dashboard(request):

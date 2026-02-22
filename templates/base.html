@@ -40,6 +40,13 @@
                         <a class="nav-link" href="{% url 'settings' %}">Settings</a>
                     </li>
                 </ul>
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                    {% if request.session.simple_logged_in %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'simple_logout' %}">Logout</a>
+                    </li>
+                    {% endif %}
+                </ul>
             </div>
         </div>
     </nav>
