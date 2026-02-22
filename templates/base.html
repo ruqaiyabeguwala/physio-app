@@ -19,25 +19,25 @@
             <div class="collapse navbar-collapse" id="mainNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                        <a class="nav-link {% if request.path == '/' %}hp-nav-active{% endif %}" href="{% url 'dashboard' %}">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'patients_list' %}">Patients</a>
+                        <a class="nav-link {% if request.path|slice:':9' == '/patients' %}hp-nav-active{% endif %}" href="{% url 'patients_list' %}">Patients</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'visits_list' %}">Visits</a>
+                        <a class="nav-link {% if request.path|slice:':7' == '/visits' %}hp-nav-active{% endif %}" href="{% url 'visits_list' %}">Visits</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'appointments_list' %}">Appointments</a>
+                        <a class="nav-link {% if request.path|slice:':13' == '/appointments' %}hp-nav-active{% endif %}" href="{% url 'appointments_list' %}">Appointments</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'exercises_list' %}">Exercises</a>
+                        <a class="nav-link {% if request.path|slice:':10' == '/exercises' %}hp-nav-active{% endif %}" href="{% url 'exercises_list' %}">Exercises</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'pending_payments' %}">Pending payments</a>
+                        <a class="nav-link {% if request.path|slice:':17' == '/pending-payments' %}hp-nav-active{% endif %}" href="{% url 'pending_payments' %}">Pending payments</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'settings' %}">Settings</a>
+                        <a class="nav-link {% if request.path|slice:':10' == '/settings' %}hp-nav-active{% endif %}" href="{% url 'settings' %}">Settings</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">

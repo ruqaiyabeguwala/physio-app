@@ -89,6 +89,28 @@ main.container {
     opacity: 1;
 }
 
+.navbar-nav .nav-link.hp-nav-active {
+    color: #ffffff !important;
+    font-weight: 600;
+    position: relative;
+    background: rgba(13, 71, 161, 0.22);
+    border-radius: 999px;
+    transform: translateY(-1px);
+}
+
+.navbar-nav .nav-link.hp-nav-active::after {
+    content: "";
+    position: absolute;
+    left: 0.9rem;
+    right: 0.9rem;
+    bottom: 0.35rem;
+    height: 2px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    animation: hp-nav-underline 0.35s ease-out;
+    transform-origin: center;
+}
+
 .hp-card {
     background: var(--hp-surface);
     border-radius: 18px;
@@ -216,5 +238,16 @@ main.container {
         opacity: 1;
         transform: translateY(0);
         scale: 1;
+    }
+}
+
+@keyframes hp-nav-underline {
+    from {
+        transform: scaleX(0);
+        opacity: 0;
+    }
+    to {
+        transform: scaleX(1);
+        opacity: 1;
     }
 }
