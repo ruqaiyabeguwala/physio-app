@@ -32,5 +32,6 @@ urlpatterns = [
     path('exercises/drive-files/', views.exercises_drive_files, name='exercises_drive_files'),
     path('pending-payments/', views.pending_payments, name='pending_payments'),
     path('pending-payments/export/', views.pending_payments_export, name='pending_payments_export'),
+    path('payments/', views.payments_list, name='payments_list'),
     path('settings/', views.settings_view, name='settings'),
 ]

@@ -97,21 +97,60 @@
                 {% if not patient and patients_for_select %}
                     <div class="col-12">
                         <label class="form-label">Patient</label>
-                        <input
-                            type="search"
-                            id="patient-search-input"
-                            class="form-control mb-2"
-                            placeholder="Search by name or mobile"
-                            autocomplete="off"
-                        >
-                        <select name="patient_id" id="patient-select" class="form-select" required>
-                            <option value="">Select patient</option>
-                            {% for p in patients_for_select %}
-                                <option value="{{ p.pk }}"{% if selected_patient_id and selected_patient_id|add:0 == p.pk %} selected{% endif %}>
-                                    {{ p.full_name }} ({{ p.mobile }})
-                                </option>
-                            {% endfor %}
-                        </select>
+                        <div class="dropdown w-100" id="patient-dropdown">
+                            <button
+                                class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+                                type="button"
+                                id="patient-dropdown-toggle"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                            >
+                                <span id="patient-dropdown-label">
+                                    {% if selected_patient_id %}
+                                        {% for p in patients_for_select %}
+                                            {% if selected_patient_id and selected_patient_id|add:0 == p.pk %}
+                                                {{ p.full_name }} ({{ p.mobile }})
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Select patient
+                                    {% endif %}
+                                </span>
+                                <i class="bi bi-chevron-down ms-2"></i>
+                            </button>
+                            <div
+                                class="dropdown-menu w-100 p-2"
+                                aria-labelledby="patient-dropdown-toggle"
+                                style="max-height: 260px; overflow-y: auto;"
+                            >
+                                <input
+                                    type="search"
+                                    id="patient-dropdown-search"
+                                    class="form-control form-control-sm mb-2"
+                                    placeholder="Search by name or mobile"
+                                    autocomplete="off"
+                                >
+                                <div id="patient-dropdown-options">
+                                    {% for p in patients_for_select %}
+                                        <button
+                                            type="button"
+                                            class="dropdown-item d-flex justify-content-between align-items-center"
+                                            data-id="{{ p.pk }}"
+                                            data-label="{{ p.full_name }} ({{ p.mobile }})"
+                                        >
+                                            <span>{{ p.full_name }}</span>
+                                            <span class="small text-muted ms-2">{{ p.mobile }}</span>
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <input
+                                type="hidden"
+                                name="patient_id"
+                                id="patient-id-hidden"
+                                value="{{ selected_patient_id }}"
+                            >
+                        </div>
                     </div>
                 {% endif %}
                 <div class="col-md-4">
@@ -285,18 +324,59 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    var patientSearchInput = document.getElementById('patient-search-input');
-    var patientSelect = document.getElementById('patient-select');
-    if (patientSearchInput && patientSelect) {
-        patientSearchInput.addEventListener('input', function () {
-            var query = patientSearchInput.value.toLowerCase();
-            Array.prototype.forEach.call(patientSelect.options, function (opt) {
-                if (!opt.value) {
-                    opt.hidden = false;
-                    return;
+    var patientDropdownToggle = document.getElementById('patient-dropdown-toggle');
+    var patientDropdownLabel = document.getElementById('patient-dropdown-label');
+    var patientDropdownSearch = document.getElementById('patient-dropdown-search');
+    var patientDropdownOptions = document.getElementById('patient-dropdown-options');
+    var patientHiddenInput = document.getElementById('patient-id-hidden');
+    if (patientDropdownToggle && patientDropdownLabel && patientDropdownSearch && patientDropdownOptions && patientHiddenInput) {
+        var optionButtons = Array.prototype.slice.call(
+            patientDropdownOptions.querySelectorAll('button[data-id]')
+        );
+
+        function applyInitialLabel() {
+            var currentId = patientHiddenInput.value;
+            if (!currentId) {
+                patientDropdownLabel.textContent = 'Select patient';
+                return;
+            }
+            var found = optionButtons.find(function (btn) {
+                return String(btn.getAttribute('data-id')) === String(currentId);
+            });
+            if (found) {
+                patientDropdownLabel.textContent = found.getAttribute('data-label') || found.textContent.trim();
+            } else {
+                patientDropdownLabel.textContent = 'Select patient';
+            }
+        }
+
+        applyInitialLabel();
+
+        function filterPatientOptions(query) {
+            var q = query.toLowerCase();
+            optionButtons.forEach(function (btn) {
+                var text = (btn.getAttribute('data-label') || btn.textContent || '').toLowerCase();
+                var match = !q || text.indexOf(q) !== -1;
+                btn.classList.toggle('d-none', !match);
+            });
+        }
+
+        patientDropdownSearch.addEventListener('input', function () {
+            filterPatientOptions(patientDropdownSearch.value.trim());
+        });
+
+        optionButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-id');
+                var label = btn.getAttribute('data-label') || btn.textContent.trim();
+                patientHiddenInput.value = id || '';
+                patientDropdownLabel.textContent = label || 'Select patient';
+                filterPatientOptions('');
+                patientDropdownSearch.value = '';
+                if (window.bootstrap && window.bootstrap.Dropdown) {
+                    var dropdown = window.bootstrap.Dropdown.getOrCreateInstance(patientDropdownToggle);
+                    dropdown.hide();
                 }
-                var text = opt.text.toLowerCase();
-                opt.hidden = text.indexOf(query) === -1;
             });
         });
     }

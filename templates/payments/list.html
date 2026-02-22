@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start hp-page-header hp-fade-up">
+    <div>
+        <h1 class="hp-page-title mb-1">Payments</h1>
+        <div class="hp-page-subtitle">
+            All visit payments and pending dues in one place.
+        </div>
+    </div>
+</div>
+
+<div class="card hp-card hp-section hp-fade-up-delayed">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end mb-3 hp-filters-form">
+            <div class="col-md-4 col-sm-6">
+                <label class="form-label">Search</label>
+                <div class="input-group input-group-sm">
+                    <input
+                        type="search"
+                        name="q"
+                        value="{{ query }}"
+                        class="form-control"
+                        placeholder="Search by patient name or phone"
+                    >
+                    <button class="btn btn-outline-secondary" type="submit">
+                        Search
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <label class="form-label">Sort by</label>
+                <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="date_desc" {% if sort_key == "date_desc" %}selected{% endif %}>Newest first</option>
+                    <option value="amount_desc" {% if sort_key == "amount_desc" %}selected{% endif %}>Highest paid</option>
+                    <option value="amount_asc" {% if sort_key == "amount_asc" %}selected{% endif %}>Lowest paid</option>
+                    <option value="due_desc" {% if sort_key == "due_desc" %}selected{% endif %}>Highest due</option>
+                    <option value="due_asc" {% if sort_key == "due_asc" %}selected{% endif %}>Lowest due</option>
+                </select>
+            </div>
+            <div class="col-md-4 col-sm-12 text-md-end mt-2 mt-md-0">
+                <div class="small text-muted">
+                    Pending as of {{ today }}:
+                    <strong class="text-danger">₹{{ pending_total }}</strong>
+                    {% if pending_count %}
+                        <span class="ms-1">({{ pending_count }} visits)</span>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Payment date &amp; time</th>
+                        <th>Patient</th>
+                        <th>Visit date</th>
+                        <th class="text-end">Visit fee</th>
+                        <th class="text-end">Payment</th>
+                        <th class="text-end">Current due</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if payments %}
+                        {% for payment in payments %}
+                            <tr>
+                                <td>
+                                    {{ payment.created_at|date:"Y-m-d" }}
+                                    <span class="text-muted small ms-1">
+                                        {{ payment.created_at|time:"H:i" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'patient_detail' payment.visit.patient.pk %}" class="text-decoration-none">
+                                        {{ payment.visit.patient.full_name }}
+                                    </a>
+                                </td>
+                                <td>{{ payment.visit.visit_date }}</td>
+                                <td class="text-end">₹{{ payment.visit.visit_fee }}</td>
+                                <td class="text-end">₹{{ payment.amount }}</td>
+                                <td class="text-end">
+                                    {% if payment.visit.balance > 0 %}
+                                        <button
+                                            type="button"
+                                            class="btn btn-link p-0 text-danger text-decoration-none"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#paymentsClearDueModal"
+                                            data-url="{% url 'visit_clear_due' payment.visit.pk %}"
+                                            data-amount="{{ payment.visit.balance }}"
+                                        >
+                                            ₹{{ payment.visit.balance }}
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted small">₹0</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if payment.method %}
+                                        {{ payment.get_method_display }}
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if payment.visit.payment_status == 'paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif payment.visit.payment_status == 'partial' %}
+                                        <span class="badge bg-warning text-dark">Partial</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ payment.get_kind_display }}
+                                </td>
+                                <td class="text-end">
+                                    <a
+                                        href="{% url 'visit_detail' payment.visit.pk %}"
+                                        class="btn btn-sm btn-outline-primary me-1"
+                                        title="View visit"
+                                    >
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted small">
+                                No payments found for the selected filters.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentsClearDueModal" tabindex="-1" aria-labelledby="paymentsClearDueLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" id="paymentsClearDueForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentsClearDueLabel">Clear visit due</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">
+                        Enter the amount to clear for this visit.
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input
+                            type="number"
+                            name="clear_amount"
+                            id="paymentsClearDueAmount"
+                            class="form-control text-end"
+                            step="0.01"
+                            min="0"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Clear due</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('paymentsClearDueModal');
+    if (!modalEl) return;
+    modalEl.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        if (!button) return;
+        var url = button.getAttribute('data-url');
+        var amount = button.getAttribute('data-amount');
+        var form = document.getElementById('paymentsClearDueForm');
+        var amountInput = document.getElementById('paymentsClearDueAmount');
+        if (form && url) {
+            form.action = url;
+        }
+        if (amountInput) {
+            amountInput.value = amount || '';
+        }
+        if (form) {
+            var nextInput = form.querySelector('input[name="next"]');
+            if (!nextInput) {
+                nextInput = document.createElement('input');
+                nextInput.type = 'hidden';
+                nextInput.name = 'next';
+                form.appendChild(nextInput);
+            }
+            nextInput.value = window.location.pathname + window.location.search;
+        }
+    });
+});
+</script>
+
+{% endblock %}

@@ -79,9 +79,22 @@
                             · {{ exercise.mime_type }}
                         {% endif %}
                     </div>
-                {% else %}
+                {% endif %}
+                {% if exercise.external_url %}
+                    <div class="mt-3">
+                        <a
+                            href="{{ exercise.external_url }}"
+                            target="_blank"
+                            rel="noopener"
+                            class="btn btn-sm btn-outline-primary"
+                        >
+                            Open external link
+                        </a>
+                    </div>
+                {% endif %}
+                {% if not exercise.google_drive_file_id and not exercise.external_url %}
                     <div class="text-muted small">
-                        No Google Drive file linked to this exercise yet.
+                        No media linked to this exercise yet.
                     </div>
                 {% endif %}
             </div>
@@ -90,4 +103,3 @@
 </div>
 
 {% endblock %}
-

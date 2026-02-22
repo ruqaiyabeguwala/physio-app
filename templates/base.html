@@ -37,6 +37,9 @@
                         <a class="nav-link {% if request.path|slice:':17' == '/pending-payments' %}hp-nav-active{% endif %}" href="{% url 'pending_payments' %}">Pending payments</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path|slice:':9' == '/payments' %}hp-nav-active{% endif %}" href="{% url 'payments_list' %}">Payments</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path|slice:':10' == '/settings' %}hp-nav-active{% endif %}" href="{% url 'settings' %}">Settings</a>
                     </li>
                 </ul>

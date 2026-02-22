@@ -6,7 +6,7 @@ from datetime import date, timedelta
 import calendar
 import re
 
-from django.db.models import DecimalField, F, Sum, Q
+from django.db.models import DecimalField, F, Sum, Q, Count
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,7 +17,7 @@ from django.contrib import messages
 
 from django.conf import settings
 
-from .models import Appointment, ClinicSettings, Exercise, Patient, Visit, VisitExercise
+from .models import Appointment, ClinicSettings, Exercise, Patient, Visit, VisitExercise, Payment
 
 try:
     from google.oauth2 import service_account
@@ -504,6 +504,7 @@ class ExerciseForm(forms.ModelForm):
             "file_name",
             "mime_type",
             "thumbnail_url",
+            "external_url",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
@@ -512,7 +513,12 @@ class ExerciseForm(forms.ModelForm):
             "file_name": forms.HiddenInput(),
             "mime_type": forms.HiddenInput(),
             "thumbnail_url": forms.HiddenInput(),
+            "external_url": forms.URLInput(attrs={"class": "form-control"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["google_drive_file_id"].required = False
 
 
 def _update_patient_summary(patient: Patient):
@@ -706,6 +712,14 @@ def visit_create(request):
             _set_payment_status(visit)
             visit.save()
 
+            if visit.amount_paid and visit.amount_paid > 0:
+                Payment.objects.create(
+                    visit=visit,
+                    amount=visit.amount_paid,
+                    kind=Payment.TYPE_VISIT,
+                    method=visit.payment_method,
+                )
+
             VisitExercise.objects.filter(visit=visit).delete()
             exercises_selected = form.cleaned_data.get("exercises")
             if exercises_selected:
@@ -801,6 +815,12 @@ def visit_clear_due(request, pk):
             if not visit.payment_date:
                 visit.payment_date = timezone.localdate()
             visit.save(update_fields=["amount_paid", "payment_status", "payment_date"])
+            Payment.objects.create(
+                visit=visit,
+                amount=to_apply,
+                kind=Payment.TYPE_DUE_CLEAR,
+                method=visit.payment_method,
+            )
             _update_patient_summary(visit.patient)
         next_url = request.POST.get("next")
         if next_url:
@@ -1160,6 +1180,72 @@ def pending_payments_export(request):
             ]
         )
     return response
+
+
+def payments_list(request):
+    today = timezone.localdate()
+    status_filter = request.GET.get("status", "all")
+    sort_key = request.GET.get("sort", "date_desc")
+    query = request.GET.get("q", "").strip()
+
+    base_qs = Payment.objects.select_related("visit", "visit__patient")
+
+    if query:
+        base_qs = base_qs.filter(
+            Q(visit__patient__full_name__icontains=query)
+            | Q(visit__patient__mobile__icontains=query)
+        )
+
+    if status_filter in {Visit.STATUS_PAID, Visit.STATUS_PARTIAL, Visit.STATUS_PENDING}:
+        base_qs = base_qs.filter(visit__payment_status=status_filter)
+    else:
+        status_filter = "all"
+
+    if sort_key == "amount_desc":
+        base_qs = base_qs.order_by("-amount", "-created_at", "-id")
+    elif sort_key == "amount_asc":
+        base_qs = base_qs.order_by("amount", "created_at", "id")
+    elif sort_key == "due_desc":
+        base_qs = base_qs.order_by(
+            F("visit__visit_fee") - F("visit__amount_paid"), "-created_at", "-id"
+        )
+    elif sort_key == "due_asc":
+        base_qs = base_qs.order_by(
+            F("visit__visit_fee") - F("visit__amount_paid"), "created_at", "id"
+        )
+    else:
+        sort_key = "date_desc"
+        base_qs = base_qs.order_by("-created_at", "-id")
+
+    balance_expr = F("visit_fee") - F("amount_paid")
+    pending_qs = Visit.objects.select_related("patient").filter(
+        is_deleted=False
+    ).exclude(payment_status=Visit.STATUS_PAID)
+
+    if query:
+        pending_qs = pending_qs.filter(
+            Q(patient__full_name__icontains=query)
+            | Q(patient__mobile__icontains=query)
+        )
+    totals = pending_qs.aggregate(
+        total_due=Coalesce(
+            Sum(balance_expr, output_field=DecimalField(max_digits=10, decimal_places=2)),
+            0,
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        ),
+        total_count=Coalesce(Count("id"), 0),
+    )
+
+    context = {
+        "today": today,
+        "payments": base_qs,
+        "status_filter": status_filter,
+        "sort_key": sort_key,
+        "pending_total": totals["total_due"],
+        "pending_count": totals["total_count"],
+        "query": query,
+    }
+    return render(request, "payments/list.html", context)
 
 
 def settings_view(request):

@@ -98,14 +98,39 @@ class Visit(models.Model):
         return f"Visit {self.id} for {self.patient}"
 
 
+class Payment(models.Model):
+    TYPE_VISIT = "visit"
+    TYPE_DUE_CLEAR = "due_clear"
+
+    TYPE_CHOICES = [
+        (TYPE_VISIT, "Visit payment"),
+        (TYPE_DUE_CLEAR, "Due clear"),
+    ]
+
+    visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="payments")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    kind = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    method = models.CharField(
+        max_length=20,
+        choices=Visit.PAYMENT_CHOICES,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_kind_display()} of ₹{self.amount} for visit {self.visit_id}"
+
+
 class Exercise(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     category = models.CharField(max_length=100, null=True, blank=True)
-    google_drive_file_id = models.CharField(max_length=255)
+    google_drive_file_id = models.CharField(max_length=255, blank=True)
     file_name = models.CharField(max_length=255, null=True, blank=True)
     mime_type = models.CharField(max_length=100, null=True, blank=True)
     thumbnail_url = models.URLField(null=True, blank=True)
+    external_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
